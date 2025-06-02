@@ -9,9 +9,9 @@ import (
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/field"
 	"github.com/conductorone/baton-sdk/pkg/types"
+	"github.com/conductorone/baton-zuper/pkg/connector"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"github.com/spf13/viper"
-	"github.com/conductorone/baton-zuper/pkg/connector"
 	"go.uber.org/zap"
 )
 
@@ -48,7 +48,10 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 		return nil, err
 	}
 
-	cb, err := connector.New(ctx)
+	zuperApiUrl := v.GetString(apiUrlField.FieldName)
+	zuperToken := v.GetString(tokenField.FieldName)
+
+	cb, err := connector.New(ctx, zuperApiUrl, zuperToken)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err
