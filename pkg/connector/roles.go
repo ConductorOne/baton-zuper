@@ -83,7 +83,8 @@ func (r *roleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 	return []*v2.Entitlement{ent}, "", annos, nil
 }
 
-// Grants returns no grants for a role resource (handled in userBuilder).
+
+// Grants would assign roles to users. This is intentionally left empty as grants are handled by the userBuilder.
 func (r *roleBuilder) Grants(ctx context.Context, roleRes *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestUserBuilder_List tests the List method of the userBuilder using mock responses.
 // It validates correct parsing of user data, handling of pagination tokens, annotations, and error scenarios.
 func TestUserBuilder_List(t *testing.T) {
 	tests := []struct {
@@ -68,7 +67,10 @@ func TestUserBuilder_List(t *testing.T) {
 					return mockUsers, tt.nextToken, annos, nil
 				},
 				GetUserByIDFunc: func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error) {
-					return nil, nil, nil // No se usa en estos tests
+					return nil, nil, nil
+				},
+				CreateUserFunc: func(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error) {
+					return &client.CreateUserResponse{}, nil, nil
 				},
 			}
 

@@ -6,6 +6,8 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
+	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
+	"github.com/conductorone/baton-sdk/pkg/crypto"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	grantpkg "github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
@@ -16,6 +18,7 @@ import (
 type UserClient interface {
 	GetUsers(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
 	GetUserByID(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
+	CreateUser(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error)
 }
 
 type userBuilder struct {
@@ -96,6 +99,118 @@ func (o *userBuilder) Grants(ctx context.Context, resourceUser *v2.Resource, pTo
 	}
 
 	return grants, "", annos, nil
+}
+
+// CreateAccountCapabilityDetails declares support for account provisioning with password.
+func (u *userBuilder) CreateAccountCapabilityDetails(ctx context.Context) (*v2.CredentialDetailsAccountProvisioning, annotations.Annotations, error) {
+	return &v2.CredentialDetailsAccountProvisioning{
+		SupportedCredentialOptions: []v2.CapabilityDetailCredentialOption{
+			v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+			v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_RANDOM_PASSWORD,
+		},
+		PreferredCredentialOption: v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+	}, nil, nil
+}
+
+// Helper to get the password based on credentialOptions.
+func getCredentialOption(credentialOptions *v2.CredentialOptions) (string, bool, error) {
+	if credentialOptions == nil {
+		return "", false, nil
+	}
+	if credentialOptions.GetNoPassword() != nil {
+		return "", false, nil
+	}
+	if credentialOptions.GetRandomPassword() == nil {
+		return "", false, nil
+	}
+	length := credentialOptions.GetRandomPassword().GetLength()
+	if length < 8 {
+		length = 8
+	}
+	plaintextPassword, err := crypto.GenerateRandomPassword(&v2.CredentialOptions_RandomPassword{
+		Length: length,
+	})
+	if err != nil {
+		return "", false, err
+	}
+	return plaintextPassword, true, nil
+}
+
+// CreateAccount provisions a new Zuper user based on AccountInfo and CredentialOptions.
+func (u *userBuilder) CreateAccount(
+	ctx context.Context,
+	accountInfo *v2.AccountInfo,
+	credentialOptions *v2.CredentialOptions,
+) (
+	connectorbuilder.CreateAccountResponse,
+	[]*v2.PlaintextData,
+	annotations.Annotations,
+	error,
+) {
+	profile := accountInfo.GetProfile().AsMap()
+	requiredFields := map[string]string{
+		"first_name": "first_name is required",
+		"last_name":  "last_name is required",
+		"email":      "email is required",
+		"emp_code":   "emp_code is required",
+	}
+	for field, errMsg := range requiredFields {
+		if val, ok := profile[field].(string); !ok || val == "" {
+			return nil, nil, nil, fmt.Errorf("%s", errMsg)
+		}
+	}
+
+	password, generatedPassword, err := getCredentialOption(credentialOptions)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if password == "" {
+		password, err = crypto.GenerateRandomPassword(&v2.CredentialOptions_RandomPassword{Length: 12})
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("failed to generate random password: %w", err)
+		}
+		generatedPassword = true
+	}
+	// We establish the most basic role of Zuper for user creation.
+	userPayload := client.UserPayload{
+		FirstName:   profile["first_name"].(string),
+		LastName:    profile["last_name"].(string),
+		Email:       profile["email"].(string),
+		Password:    password,
+		Designation: "Field Executive",
+		EmpCode:     profile["emp_code"].(string),
+		RoleID:      "3",
+	}
+
+	resp, annos, err := u.client.CreateUser(ctx, userPayload)
+	if err != nil {
+		return nil, nil, annos, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	newUser := &client.ZuperUser{
+		UserUID:     resp.Data.UserUID,
+		FirstName:   userPayload.FirstName,
+		LastName:    userPayload.LastName,
+		Email:       userPayload.Email,
+		Designation: userPayload.Designation,
+		EmpCode:     userPayload.EmpCode,
+		IsActive:    true,
+		IsDeleted:   false,
+	}
+
+	userResource, err := parseIntoUserResource(newUser)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to parse created user: %w", err)
+	}
+
+	var plaintexts []*v2.PlaintextData
+	if generatedPassword {
+		plaintexts = []*v2.PlaintextData{{Bytes: []byte(password)}}
+	}
+
+	return &v2.CreateAccountResponse_SuccessResult{
+		Resource: userResource,
+	}, plaintexts, annos, nil
 }
 
 // parseIntoUserResource converts a ZuperUser into a v2.Resource for Baton.

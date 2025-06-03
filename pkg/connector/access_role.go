@@ -130,7 +130,7 @@ func (b *accessRoleBuilder) Entitlements(ctx context.Context, resource *v2.Resou
 	return entitlements, "", annos, nil
 }
 
-// Grants returns the grants for an access role resource (none in this implementation).
+// Grants would assign access roles to users. This is intentionally left empty as grants are handled by the userBuilder.
 func (b *accessRoleBuilder) Grants(ctx context.Context, resourceUser *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }

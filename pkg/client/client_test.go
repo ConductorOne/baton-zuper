@@ -116,17 +116,60 @@ func TestGetUsers(t *testing.T) {
 	})
 }
 
-// TestDoRequestInvalidURL tests the behavior of the doRequest method
-// when provided with an invalid URL, expecting it to return an error.
-func TestDoRequestInvalidURL(t *testing.T) {
+// TestCreateUser verifies that CreateUser correctly sends the POST request
+// and parses the response appropriately.
+func TestCreateUser(t *testing.T) {
+	expectedUser := ZuperUser{
+		UserUID:   "789",
+		FirstName: "Carlos",
+		LastName:  "Ramírez",
+		Email:     "carlos@example.com",
+		IsActive:  true,
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/api/user", r.URL.Path)
+
+		var received CreateUserRequest
+		err := json.NewDecoder(r.Body).Decode(&received)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedUser.FirstName, received.User.FirstName)
+		assert.Equal(t, expectedUser.LastName, received.User.LastName)
+		assert.Equal(t, expectedUser.Email, received.User.Email)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+
+		resp := CreateUserResponse{
+			Type:    "success",
+			Title:   "User created",
+			Message: "User created successfully",
+			Data: struct {
+				UserUID string `json:"user_uid"`
+			}{
+				UserUID: expectedUser.UserUID,
+			},
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
 	ctx := context.Background()
-	httpClient, err := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+	httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+	client := NewClient(ctx, server.URL, "dummy-token", httpClient)
+
+	userPayload := UserPayload{
+		FirstName: expectedUser.FirstName,
+		LastName:  expectedUser.LastName,
+		Email:     expectedUser.Email,
+	}
+
+	createdUser, annos, err := client.CreateUser(ctx, userPayload)
 	assert.NoError(t, err)
-
-	client := NewClient(ctx, "http://invalid-url", "token", httpClient)
-
-	_, _, err = client.doRequest(ctx, http.MethodGet, "::bad_url::", nil)
-	assert.Error(t, err)
+	assert.NotNil(t, createdUser)
+	assert.IsType(t, annotations.Annotations{}, annos)
+	assert.Equal(t, expectedUser.UserUID, createdUser.Data.UserUID)
 }
 
 func TestGetUserByID(t *testing.T) {
@@ -171,4 +214,17 @@ func TestGetUserByID(t *testing.T) {
 		assert.Nil(t, user)
 		assert.Nil(t, annos)
 	})
+}
+
+// TestDoRequestInvalidURL tests the behavior of the doRequest method
+// when provided with an invalid URL, expecting it to return an error.
+func TestDoRequestInvalidURL(t *testing.T) {
+	ctx := context.Background()
+	httpClient, err := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+	assert.NoError(t, err)
+
+	client := NewClient(ctx, "http://invalid-url", "token", httpClient)
+
+	_, _, err = client.doRequest(ctx, http.MethodGet, "::bad_url::", nil)
+	assert.Error(t, err)
 }

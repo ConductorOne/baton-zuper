@@ -89,7 +89,7 @@ func (e *ZuperError) Message() string {
 }
 
 // prepareUserDetailsRequest builds a request URL for the Zuper API user details endpoint.
-func prepareUserDetailsRequest(baseURL, endpoint, userUID string) (string, error) {
+func prepareUserDetailsRequest(baseURL string, endpoint string, userUID string) (string, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return "", fmt.Errorf("invalid base URL: %w", err)
@@ -102,4 +102,28 @@ func prepareUserDetailsRequest(baseURL, endpoint, userUID string) (string, error
 
 	fullURL := base.ResolveReference(rel)
 	return fullURL.String(), nil
+}
+
+// prepareUserCreateRequest builds a request URL for the Zuper API user create endpoint.
+func prepareUserCreateRequest(baseURL string, endpoint string) (string, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid base URL: %w", err)
+	}
+
+	rel, err := url.Parse(endpoint)
+	if err != nil {
+		return "", fmt.Errorf("invalid endpoint: %w", err)
+	}
+
+	fullURL := base.ResolveReference(rel)
+	return fullURL.String(), nil
+}
+
+func mustParseURL(raw string) *url.URL {
+	u, err := url.Parse(raw)
+	if err != nil {
+		panic(fmt.Sprintf("invalid URL: %s", raw))
+	}
+	return u
 }

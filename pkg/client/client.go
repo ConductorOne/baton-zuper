@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -14,6 +16,7 @@ import (
 const (
 	getUsers    = "/api/user/all"
 	getUserByID = "/api/user/"
+	createUsers = "/api/user"
 )
 
 // Client is the Zuper API client for Baton.
@@ -94,6 +97,36 @@ func (c *Client) GetUserByID(ctx context.Context, userUID string) (*ZuperUser, a
 	return &userResponse.Data, annos, nil
 }
 
+// CreateUser sends a request to create a new user with the provided user payload and default work hours.
+func (c *Client) CreateUser(ctx context.Context, user UserPayload) (*CreateUserResponse, annotations.Annotations, error) {
+	workHours := []WorkHour{
+		{Day: "Sunday", StartTime: "06:00 AM", EndTime: "06:00 PM", WorkMins: 0, TrackLocation: true, IsEnabled: "false"},
+		{Day: "Monday", StartTime: "06:00 AM", EndTime: "06:00 PM", WorkMins: 0, TrackLocation: true, IsEnabled: "false"},
+		{Day: "Tuesday", StartTime: "06:00 AM", EndTime: "06:00 PM", WorkMins: 0, TrackLocation: true, IsEnabled: "false"},
+		{Day: "Wednesday", StartTime: "06:00 AM", EndTime: "06:00 PM", WorkMins: 0, TrackLocation: true, IsEnabled: "false"},
+		{Day: "Thursday", StartTime: "06:00 AM", EndTime: "06:00 PM", WorkMins: 0, TrackLocation: true, IsEnabled: "false"},
+		{Day: "Friday", StartTime: "06:00 AM", EndTime: "06:00 PM", WorkMins: 0, TrackLocation: true, IsEnabled: "false"},
+		{Day: "Saturday", StartTime: "06:00 AM", EndTime: "06:00 PM", WorkMins: 0, TrackLocation: true, IsEnabled: "false"},
+	}
+
+	payload := CreateUserRequest{
+		WorkHours: workHours,
+		User:      user,
+	}
+
+	userCreateURL, err := prepareUserCreateRequest(c.apiUrl, createUsers)
+	if err != nil {
+		return nil, nil, err
+	}
+	var result CreateUserResponse
+	_, annos, err := c.doRequestWithBody(ctx, http.MethodPost, userCreateURL, payload, &result)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &result, annos, nil
+}
+
 // doRequest executes an HTTP request and decodes the response into the provided result.
 func (c *Client) doRequest(
 	ctx context.Context,
@@ -125,6 +158,45 @@ func (c *Client) doRequest(
 	doOptions = append(doOptions, uhttp.WithErrorResponse(&zuperErr))
 
 	resp, err := c.wrapper.Do(req, doOptions...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+
+	annos := annotations.Annotations{}
+	if desc, err := ratelimit.ExtractRateLimitData(resp.StatusCode, &resp.Header); err == nil {
+		annos.WithRateLimiting(desc)
+	}
+
+	return resp.Header, annos, nil
+}
+
+func (c *Client) doRequestWithBody(
+	ctx context.Context,
+	method string,
+	url string,
+	body interface{},
+	res interface{},
+) (http.Header, annotations.Annotations, error) {
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	req, err := c.wrapper.NewRequest(
+		ctx,
+		method,
+		mustParseURL(url),
+		uhttp.WithContentTypeJSONHeader(),
+		uhttp.WithAcceptJSONHeader(),
+		uhttp.WithHeader("x-api-key", c.apiKey),
+		uhttp.WithBody(bodyBytes),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := c.wrapper.Do(req, uhttp.WithJSONResponse(res))
 	if err != nil {
 		return nil, nil, err
 	}
