@@ -11,26 +11,17 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 )
 
-// API endpoint constant.
 const (
 	getUsers = "/api/user/all"
 )
 
-// Client struct stores configuration and HTTP client wrapper for API requests.
 type Client struct {
 	apiUrl  string
 	Token   string
 	wrapper *uhttp.BaseHttpClient
 }
 
-// New creates and returns a new Client using an existing Client's configuration.
-// It initializes a uhttp client with logging enabled and wraps it with a BaseHttpClient.
 func New(ctx context.Context, client *Client) (*Client, error) {
-	var (
-		clientApi   = client.apiUrl
-		clientToken = client.Token
-	)
-
 	httpClient, err := uhttp.NewClient(ctx, uhttp.WithLogger(true, ctxzap.Extract(ctx)))
 	if err != nil {
 		return nil, err
@@ -43,55 +34,50 @@ func New(ctx context.Context, client *Client) (*Client, error) {
 
 	return &Client{
 		wrapper: cli,
-		apiUrl:  clientApi,
-		Token:   clientToken,
+		apiUrl:  client.apiUrl,
+		Token:   client.Token,
 	}, nil
 }
 
-// NewClient creates a new Client with the provided API URL and token.
-// Optionally accepts a custom BaseHttpClient (for testing or reuse).
-func NewClient(ctx context.Context, apiUrl string, token string, httpClient ...*uhttp.BaseHttpClient) *Client {
-	var wrapper = &uhttp.BaseHttpClient{}
-	if len(httpClient) != 0 {
-		wrapper = httpClient[0]
+func NewClient(ctx context.Context, apiUrl string, token string, httpClient *uhttp.BaseHttpClient) *Client {
+	if httpClient == nil {
+		httpClient = &uhttp.BaseHttpClient{}
 	}
 	return &Client{
-		wrapper: wrapper,
+		wrapper: httpClient,
 		apiUrl:  apiUrl,
 		Token:   token,
 	}
 }
 
-// GetUsers fetches a paginated list of users from the API.
-// It returns a slice of users, a next page token (if available), rate limit annotations, and an error if any.
-func (c *Client) GetUsers(ctx context.Context, token string) ([]ZuperUser, string, annotations.Annotations, error) {
+func (c *Client) GetUsers(ctx context.Context, pToken string) ([]*ZuperUser, string, annotations.Annotations, error) {
 	opts := pageOptions{
-		PageToken: token,
-		PageSize:  DefaultPageSize,
+		PageToken: pToken,
+		PageSize:  defaultPageSize,
 	}
 
-	usersURL, _, err := PreparePagedRequest(c.apiUrl, getUsers, opts)
+	usersURL, _, err := preparePagedRequest(c.apiUrl, getUsers, opts)
 	if err != nil {
 		return nil, "", nil, err
 	}
 
 	var usersResponse UsersResponse
-	headers, _, err := c.doRequest(ctx, http.MethodGet, usersURL.String(), &usersResponse)
+	_, annos, err := c.doRequest(ctx, http.MethodGet, usersURL.String(), &usersResponse)
 	if err != nil {
 		return nil, "", nil, err
 	}
-	annos := annotations.Annotations{}
-	if desc, err := ratelimit.ExtractRateLimitData(http.StatusOK, &headers); err == nil {
-		annos.WithRateLimiting(desc)
+
+	nextToken := getNextToken(usersResponse.CurrentPage, usersResponse.TotalPages)
+
+	// Convert to pointers
+	var users []*ZuperUser
+	for i := range usersResponse.Data {
+		users = append(users, &usersResponse.Data[i])
 	}
 
-	nextToken := GetNextToken(usersResponse.CurrentPage, usersResponse.TotalPages)
-
-	return usersResponse.Data, nextToken, annos, nil
+	return users, nextToken, annos, nil
 }
 
-// doRequest builds and sends an HTTP request with common headers and handles the response.
-// Supports GET, POST, PUT, and DELETE methods. Optionally parses the JSON response into 'res'.
 func (c *Client) doRequest(
 	ctx context.Context,
 	method string,
@@ -102,7 +88,7 @@ func (c *Client) doRequest(
 	if err != nil {
 		return nil, nil, err
 	}
-
+	var zuperErr ZuperError
 	req, err := c.wrapper.NewRequest(
 		ctx,
 		method,
@@ -122,6 +108,7 @@ func (c *Client) doRequest(
 		if res != nil {
 			doOptions = append(doOptions, uhttp.WithJSONResponse(res))
 		}
+		doOptions = append(doOptions, uhttp.WithErrorResponse(&zuperErr))
 		resp, err = c.wrapper.Do(req, doOptions...)
 	case http.MethodDelete:
 		resp, err = c.wrapper.Do(req)
@@ -131,10 +118,11 @@ func (c *Client) doRequest(
 		return nil, nil, err
 	}
 	defer resp.Body.Close()
-	annotation := annotations.Annotations{}
+
+	annos := annotations.Annotations{}
 	if desc, err := ratelimit.ExtractRateLimitData(resp.StatusCode, &resp.Header); err == nil {
-		annotation.WithRateLimiting(desc)
+		annos.WithRateLimiting(desc)
 	}
 
-	return resp.Header, annotation, nil
+	return resp.Header, annos, nil
 }

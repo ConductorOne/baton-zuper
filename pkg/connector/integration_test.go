@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/conductorone/baton-zuper/pkg/client"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +26,10 @@ func initClient(t *testing.T) *client.Client {
 		t.Skip("Missing ZUPER_API_URL or ZUPER_API_KEY environment variable. Skipping integration test.")
 	}
 
-	return client.NewClient(ctx, apiURL, apiKey)
+	httpClient, err := uhttp.NewBaseHttpClientWithContext(ctx, nil)
+	assert.NoError(t, err)
+
+	return client.NewClient(ctx, apiURL, apiKey, httpClient)
 }
 
 // TestGetUsers verifies that users can be listed successfully from the Zuper API.

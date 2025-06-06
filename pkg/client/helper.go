@@ -8,20 +8,25 @@ import (
 	"strconv"
 )
 
-const DefaultPageSize = 50
+const defaultPageSize = 50
 
-// EncodePageToken serializes the pageToken to base64.
-func EncodePageToken(pt *pageToken) string {
-	b, _ := json.Marshal(pt)
-	return base64.StdEncoding.EncodeToString(b)
+type ErrorResponse interface {
+	Message() string
 }
 
-// DecodePageToken deserializes a base64 token to pageToken.
-func DecodePageToken(token string) (*pageToken, error) {
-	if token == "" {
+func encodePageToken(pToken *pageToken) (string, error) {
+	b, err := json.Marshal(pToken)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
+}
+
+func decodePageToken(pToken string) (*pageToken, error) {
+	if pToken == "" {
 		return &pageToken{Page: 1}, nil
 	}
-	data, err := base64.StdEncoding.DecodeString(token)
+	data, err := base64.StdEncoding.DecodeString(pToken)
 	if err != nil {
 		return nil, err
 	}
@@ -32,8 +37,7 @@ func DecodePageToken(token string) (*pageToken, error) {
 	return &pt, nil
 }
 
-// PreparePagedRequest prepares the URL with pagination parameters.
-func PreparePagedRequest(baseURL, endpoint string, opts pageOptions) (*url.URL, int, error) {
+func preparePagedRequest(baseURL, endpoint string, opts pageOptions) (*url.URL, int, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invalid base URL: %w", err)
@@ -48,7 +52,7 @@ func PreparePagedRequest(baseURL, endpoint string, opts pageOptions) (*url.URL, 
 
 	page := 1
 	if opts.PageToken != "" {
-		pt, err := DecodePageToken(opts.PageToken)
+		pt, err := decodePageToken(opts.PageToken)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -64,10 +68,15 @@ func PreparePagedRequest(baseURL, endpoint string, opts pageOptions) (*url.URL, 
 	return fullURL, page, nil
 }
 
-// GetNextToken generates the token for the next page.
-func GetNextToken(current, total int) string {
+func getNextToken(current, total int) string {
 	if current < total {
-		return EncodePageToken(&pageToken{Page: current + 1})
+		token, _ := encodePageToken(&pageToken{Page: current + 1})
+		return token
 	}
 	return ""
+}
+
+// Error implements the uhttp.ErrorResponse interface.
+func (e *ZuperError) Message() string {
+	return e.MessageError
 }

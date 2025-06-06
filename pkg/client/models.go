@@ -35,6 +35,13 @@ type UsersResponse struct {
 	CurrentPage  int         `json:"current_page"`
 }
 
+// Error Models.
+type ZuperError struct {
+	MessageError string `json:"message"`
+	Title        string `json:"title"`
+	Type         string `json:"type"`
+}
+
 // Role & Access Models.
 type Role struct {
 	RoleUID  string `json:"role_uid"`

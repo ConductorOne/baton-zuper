@@ -20,11 +20,11 @@ const (
 
 // MockClient is a mock implementation of the Zuper client.
 type MockClient struct {
-	GetUsersFunc func(ctx context.Context, token string) ([]client.ZuperUser, string, annotations.Annotations, error)
+	GetUsersFunc func(ctx context.Context, token string) ([]*client.ZuperUser, string, annotations.Annotations, error)
 }
 
 // GetUsers calls the mock method if it is defined.
-func (m *MockClient) GetUsers(ctx context.Context, token string) ([]client.ZuperUser, string, annotations.Annotations, error) {
+func (m *MockClient) GetUsers(ctx context.Context, token string) ([]*client.ZuperUser, string, annotations.Annotations, error) {
 	if m.GetUsersFunc != nil {
 		return m.GetUsersFunc(ctx, token)
 	}

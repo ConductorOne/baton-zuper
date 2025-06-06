@@ -3,10 +3,12 @@ package connector
 import (
 	"context"
 	"io"
+	"net/http"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
+	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/conductorone/baton-zuper/pkg/client"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"go.uber.org/zap"
@@ -46,7 +48,8 @@ func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, erro
 // New returns a new instance of the connector.
 func New(ctx context.Context, apiUrl string, token string) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
-	zuperClient, err := client.New(ctx, client.NewClient(ctx, apiUrl, token))
+	httpClient := uhttp.NewBaseHttpClient(&http.Client{})
+	zuperClient, err := client.New(ctx, client.NewClient(ctx, apiUrl, token, httpClient))
 	if err != nil {
 		l.Error("error creating Zuper client", zap.Error(err))
 		return nil, err

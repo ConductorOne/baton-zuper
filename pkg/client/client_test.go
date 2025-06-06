@@ -56,15 +56,15 @@ func TestGetUsers(t *testing.T) {
 
 	client := NewClient(ctx, server.URL, "dummy-token", httpClient)
 
-	page := EncodePageToken(&pageToken{Page: 1})
-
+	page, err := encodePageToken(&pageToken{Page: 1})
+	assert.NoError(t, err)
 	users, nextPageToken, annos, err := client.GetUsers(ctx, page)
 	assert.NoError(t, err)
 	assert.Len(t, users, 2)
 
-	expectedNextToken := EncodePageToken(&pageToken{Page: 2})
+	expectedNextToken, err := encodePageToken(&pageToken{Page: 2})
 	assert.Equal(t, expectedNextToken, nextPageToken)
-
+	assert.NoError(t, err)
 	assert.IsType(t, annotations.Annotations{}, annos)
 
 	assert.Equal(t, "123", users[0].UserUID)

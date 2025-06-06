@@ -7,7 +7,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.x
+          go-version: 1.23.x
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run linters
@@ -18,10 +18,11 @@ jobs:
   go-test:
     strategy:
       matrix:
-        go-version: [1.22.x]
+        go-version: [1.23.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     env:
+      URL: ${{ secrets.URL }}
       TOKEN: ${{ secrets.TOKEN }}
     steps:
       - name: Install Go
@@ -43,12 +44,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BATON_LOG_LEVEL: debug
+      URL: ${{ secrets.URL }}
       TOKEN: ${{ secrets.TOKEN }}
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.x
+          go-version: 1.23.x
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build baton-zuper
@@ -56,11 +58,13 @@ jobs:
       - name: Validate capabilities
         run: |
           ./baton-zuper \
+            --api-url "$URL" \
             --token "$TOKEN" \
           capabilities
       - name: Run basic sync test
         run: |
           ./baton-zuper \
+            --api-url "$URL" \
             --token "$TOKEN" \
             --log-level debug \
             --file sync.c1z
