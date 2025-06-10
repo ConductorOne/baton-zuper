@@ -14,7 +14,7 @@ var (
 	pageToken = ""
 )
 
-// initClient initializes a Zuper client using environment variables.
+// initClient initializes a Zuper client using environment variables for integration tests.
 // Skips the tests if any required environment variable is missing.
 func initClient(t *testing.T) *client.Client {
 	ctx := context.Background()
@@ -37,7 +37,10 @@ func TestGetUsers(t *testing.T) {
 	ctx := context.Background()
 	c := initClient(t)
 
-	users, nextPage, _, err := c.GetUsers(ctx, pageToken)
+	users, nextPage, _, err := c.GetUsers(ctx, client.PageOptions{
+		PageSize:  client.DefaultPageSize,
+		PageToken: pageToken,
+	})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, users)
@@ -50,7 +53,7 @@ func TestUserBuilderList(t *testing.T) {
 	ctx := context.Background()
 	client := initClient(t)
 
-	ub := newUserBuilder(client)
+	ub := newUserBuilder(client, nil, nil)
 	users, nextToken, _, err := ub.List(ctx, nil, nil)
 
 	assert.NoError(t, err)

@@ -11,15 +11,15 @@ var (
 		field.WithDescription("The URL of the API."),
 		field.WithRequired(true),
 	)
-	tokenField = field.StringField(
-		"token",
-		field.WithDescription("API token for authenticating requests to Zuper."),
+	apiKeyField = field.StringField(
+		"api-key",
+		field.WithDescription("API key for authenticating requests to Zuper."),
 		field.WithRequired(true),
 	)
 
 	ConfigurationFields = []field.SchemaField{
 		apiUrlField,
-		tokenField,
+		apiKeyField,
 	}
 
 	FieldRelationships = []field.SchemaFieldRelationship{}

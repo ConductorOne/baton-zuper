@@ -15,13 +15,18 @@ import (
 )
 
 type Connector struct {
-	client *client.Client
+	client            *client.Client
+	roleBuilder       *roleBuilder
+	accessRoleBuilder *accessRoleBuilder
 }
 
 // ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
 func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
+	accessRoleCache := make(map[string]*client.AccessRole)
 	return []connectorbuilder.ResourceSyncer{
-		newUserBuilder(d.client),
+		newUserBuilder(d.client, d.roleBuilder, d.accessRoleBuilder),
+		newRoleBuilder(d.client),
+		newAccessRoleBuilder(d.client, accessRoleCache),
 	}
 }
 
@@ -54,8 +59,12 @@ func New(ctx context.Context, apiUrl string, token string) (*Connector, error) {
 		l.Error("error creating Zuper client", zap.Error(err))
 		return nil, err
 	}
-
+	accessRoleCache := make(map[string]*client.AccessRole)
+	roleB := newRoleBuilder(zuperClient)
+	accessRoleB := newAccessRoleBuilder(zuperClient, accessRoleCache)
 	return &Connector{
-		client: zuperClient,
+		client:            zuperClient,
+		roleBuilder:       roleB,
+		accessRoleBuilder: accessRoleB,
 	}, nil
 }

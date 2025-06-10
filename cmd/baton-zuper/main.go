@@ -49,9 +49,9 @@ func getConnector(ctx context.Context, v *viper.Viper) (types.ConnectorServer, e
 	}
 
 	zuperApiUrl := v.GetString(apiUrlField.FieldName)
-	zuperToken := v.GetString(tokenField.FieldName)
+	zuperApiKey := v.GetString(apiKeyField.FieldName)
 
-	cb, err := connector.New(ctx, zuperApiUrl, zuperToken)
+	cb, err := connector.New(ctx, zuperApiUrl, zuperApiKey)
 	if err != nil {
 		l.Error("error creating connector", zap.Error(err))
 		return nil, err

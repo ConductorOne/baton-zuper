@@ -6,7 +6,7 @@ type pageToken struct {
 	PageSize int `json:"page_size"`
 }
 
-type pageOptions struct {
+type PageOptions struct {
 	PageToken string
 	PageSize  int
 }

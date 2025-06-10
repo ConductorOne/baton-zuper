@@ -15,9 +15,10 @@ const (
 	getUsers = "/api/user/all"
 )
 
+// Client is the Zuper API client for Baton.
 type Client struct {
 	apiUrl  string
-	Token   string
+	apiKey  string
 	wrapper *uhttp.BaseHttpClient
 }
 
@@ -35,25 +36,26 @@ func New(ctx context.Context, client *Client) (*Client, error) {
 	return &Client{
 		wrapper: cli,
 		apiUrl:  client.apiUrl,
-		Token:   client.Token,
+		apiKey:  client.apiKey,
 	}, nil
 }
 
-func NewClient(ctx context.Context, apiUrl string, token string, httpClient *uhttp.BaseHttpClient) *Client {
+// NewClient creates a new Client instance with the provided HTTP client.
+func NewClient(ctx context.Context, apiUrl string, apiKey string, httpClient *uhttp.BaseHttpClient) *Client {
 	if httpClient == nil {
 		httpClient = &uhttp.BaseHttpClient{}
 	}
 	return &Client{
 		wrapper: httpClient,
 		apiUrl:  apiUrl,
-		Token:   token,
+		apiKey:  apiKey,
 	}
 }
 
-func (c *Client) GetUsers(ctx context.Context, pToken string) ([]*ZuperUser, string, annotations.Annotations, error) {
-	opts := pageOptions{
-		PageToken: pToken,
-		PageSize:  defaultPageSize,
+// GetUsers fetches a paginated list of users from the Zuper API.
+func (c *Client) GetUsers(ctx context.Context, opts PageOptions) ([]*ZuperUser, string, annotations.Annotations, error) {
+	if opts.PageSize == 0 {
+		opts.PageSize = DefaultPageSize
 	}
 
 	usersURL, _, err := preparePagedRequest(c.apiUrl, getUsers, opts)
@@ -69,7 +71,6 @@ func (c *Client) GetUsers(ctx context.Context, pToken string) ([]*ZuperUser, str
 
 	nextToken := getNextToken(usersResponse.CurrentPage, usersResponse.TotalPages)
 
-	// Convert to pointers
 	var users []*ZuperUser
 	for i := range usersResponse.Data {
 		users = append(users, &usersResponse.Data[i])
@@ -78,6 +79,7 @@ func (c *Client) GetUsers(ctx context.Context, pToken string) ([]*ZuperUser, str
 	return users, nextToken, annos, nil
 }
 
+// doRequest executes an HTTP request and decodes the response into the provided result.
 func (c *Client) doRequest(
 	ctx context.Context,
 	method string,
@@ -95,25 +97,19 @@ func (c *Client) doRequest(
 		parsedURL,
 		uhttp.WithContentTypeJSONHeader(),
 		uhttp.WithAcceptJSONHeader(),
-		uhttp.WithHeader("x-api-key", c.Token),
+		uhttp.WithHeader("x-api-key", c.apiKey),
 	)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var resp *http.Response
-	switch method {
-	case http.MethodGet, http.MethodPost, http.MethodPut:
-		var doOptions []uhttp.DoOption
-		if res != nil {
-			doOptions = append(doOptions, uhttp.WithJSONResponse(res))
-		}
-		doOptions = append(doOptions, uhttp.WithErrorResponse(&zuperErr))
-		resp, err = c.wrapper.Do(req, doOptions...)
-	case http.MethodDelete:
-		resp, err = c.wrapper.Do(req)
+	var doOptions []uhttp.DoOption
+	if res != nil {
+		doOptions = append(doOptions, uhttp.WithJSONResponse(res))
 	}
+	doOptions = append(doOptions, uhttp.WithErrorResponse(&zuperErr))
 
+	resp, err := c.wrapper.Do(req, doOptions...)
 	if err != nil {
 		return nil, nil, err
 	}

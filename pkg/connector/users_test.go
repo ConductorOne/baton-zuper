@@ -61,7 +61,7 @@ func TestUserBuilder_List(t *testing.T) {
 			}
 
 			mockCli := &test.MockClient{
-				GetUsersFunc: func(ctx context.Context, token string) ([]*client.ZuperUser, string, annotations.Annotations, error) {
+				GetUsersFunc: func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error) {
 					if tt.expectError {
 						return nil, "", nil, errors.New("mock client error")
 					}

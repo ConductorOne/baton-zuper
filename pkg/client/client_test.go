@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/conductorone/baton-sdk/pkg/annotations"
@@ -12,65 +13,107 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Mock response that simulates the expected structure of UsersResponse.
-var mockUsersResponse = UsersResponse{
-	CurrentPage: 1,
-	TotalPages:  2,
-	Data: []ZuperUser{
-		{
-			UserUID:   "123",
-			FirstName: "Juan",
-			LastName:  "Pérez",
-			Email:     "juan@example.com",
-			IsActive:  true,
-		},
-		{
-			UserUID:   "456",
-			FirstName: "Ana",
-			LastName:  "García",
-			Email:     "ana@example.com",
-			IsActive:  true,
-		},
-	},
+// loadUsersResponseFromMock loads a UsersResponse from a mock JSON file for testing.
+func loadUsersResponseFromMock(file string) UsersResponse {
+	var users []ZuperUser
+	mockData, err := os.ReadFile("../../test/mock/" + file)
+	if err != nil {
+		panic(err)
+	}
+	_ = json.Unmarshal(mockData, &users)
+	return UsersResponse{
+		CurrentPage: 1,
+		TotalPages:  1,
+		Data:        users,
+	}
 }
 
-// TestGetUsers verifies that the GetUsers method correctly fetches
-// and parses the list of users from the API, handles pagination tokens,
-// and returns expected annotations without errors.
 func TestGetUsers(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "/api/user/all?limit=50&page=1", r.URL.String())
+	t.Run("success, single page", func(t *testing.T) {
+		mockResp := loadUsersResponseFromMock("users_success.json")
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodGet, r.Method)
+			assert.Contains(t, r.URL.String(), "/api/user/all")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(mockResp)
+		}))
+		defer server.Close()
 
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("X-RateLimit-Limit", "100")
-		w.Header().Set("X-RateLimit-Remaining", "99")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(mockUsersResponse)
-	}))
-	defer server.Close()
+		ctx := context.Background()
+		httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+		client := NewClient(ctx, server.URL, "dummy-token", httpClient)
 
-	ctx := context.Background()
-	httpClient, err := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
-	assert.NoError(t, err)
+		users, nextPageToken, annos, err := client.GetUsers(ctx, PageOptions{
+			PageSize:  DefaultPageSize,
+			PageToken: "",
+		})
+		assert.NoError(t, err)
+		assert.Len(t, users, 1)
+		assert.Empty(t, nextPageToken)
+		assert.IsType(t, annotations.Annotations{}, annos)
+	})
 
-	client := NewClient(ctx, server.URL, "dummy-token", httpClient)
+	t.Run("success, paginated", func(t *testing.T) {
+		mockResp1 := loadUsersResponseFromMock("users_success.json")
+		mockResp1.TotalPages = 2
+		mockResp2 := loadUsersResponseFromMock("users_success.json")
+		mockResp2.CurrentPage = 2
+		mockResp2.TotalPages = 2
+		calls := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if calls == 1 {
+				_ = json.NewEncoder(w).Encode(mockResp1)
+			} else {
+				_ = json.NewEncoder(w).Encode(mockResp2)
+			}
+		}))
+		defer server.Close()
 
-	page, err := encodePageToken(&pageToken{Page: 1})
-	assert.NoError(t, err)
-	users, nextPageToken, annos, err := client.GetUsers(ctx, page)
-	assert.NoError(t, err)
-	assert.Len(t, users, 2)
+		ctx := context.Background()
+		httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+		client := NewClient(ctx, server.URL, "dummy-token", httpClient)
 
-	expectedNextToken, err := encodePageToken(&pageToken{Page: 2})
-	assert.Equal(t, expectedNextToken, nextPageToken)
-	assert.NoError(t, err)
-	assert.IsType(t, annotations.Annotations{}, annos)
+		// First page
+		users, nextPageToken, _, err := client.GetUsers(ctx, PageOptions{
+			PageSize:  DefaultPageSize,
+			PageToken: "",
+		})
+		assert.NoError(t, err)
+		assert.NotEmpty(t, nextPageToken)
+		assert.Len(t, users, 1)
+		// Second page
+		users2, nextPageToken2, _, err := client.GetUsers(ctx, PageOptions{
+			PageSize:  DefaultPageSize,
+			PageToken: nextPageToken,
+		})
+		assert.NoError(t, err)
+		assert.Empty(t, nextPageToken2)
+		assert.Len(t, users2, 1)
+	})
 
-	assert.Equal(t, "123", users[0].UserUID)
-	assert.Equal(t, "Juan", users[0].FirstName)
-	assert.Equal(t, "Pérez", users[0].LastName)
-	assert.Equal(t, "juan@example.com", users[0].Email)
+	t.Run("error, invalid URL", func(t *testing.T) {
+		ctx := context.Background()
+		httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+		client := NewClient(ctx, "::bad_url::", "token", httpClient)
+		_, _, err := client.doRequest(ctx, http.MethodGet, "::bad_url::", nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("error, server error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+		ctx := context.Background()
+		httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+		client := NewClient(ctx, server.URL, "dummy-token", httpClient)
+		_, _, _, err := client.GetUsers(ctx, PageOptions{PageSize: DefaultPageSize})
+		assert.Error(t, err)
+	})
 }
 
 // TestDoRequestInvalidURL tests the behavior of the doRequest method

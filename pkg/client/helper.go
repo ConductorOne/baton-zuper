@@ -8,12 +8,13 @@ import (
 	"strconv"
 )
 
-const defaultPageSize = 50
+const DefaultPageSize = 50
 
 type ErrorResponse interface {
 	Message() string
 }
 
+// encodePageToken encodes a pageToken struct into a base64 string.
 func encodePageToken(pToken *pageToken) (string, error) {
 	b, err := json.Marshal(pToken)
 	if err != nil {
@@ -22,6 +23,7 @@ func encodePageToken(pToken *pageToken) (string, error) {
 	return base64.StdEncoding.EncodeToString(b), nil
 }
 
+// decodePageToken decodes a base64 string into a pageToken struct.
 func decodePageToken(pToken string) (*pageToken, error) {
 	if pToken == "" {
 		return &pageToken{Page: 1}, nil
@@ -37,7 +39,8 @@ func decodePageToken(pToken string) (*pageToken, error) {
 	return &pt, nil
 }
 
-func preparePagedRequest(baseURL, endpoint string, opts pageOptions) (*url.URL, int, error) {
+// preparePagedRequest builds a paginated request URL for the Zuper API.
+func preparePagedRequest(baseURL, endpoint string, opts PageOptions) (*url.URL, int, error) {
 	base, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invalid base URL: %w", err)
@@ -68,6 +71,7 @@ func preparePagedRequest(baseURL, endpoint string, opts pageOptions) (*url.URL, 
 	return fullURL, page, nil
 }
 
+// getNextToken returns the next page token if more pages are available.
 func getNextToken(current, total int) string {
 	if current < total {
 		token, _ := encodePageToken(&pageToken{Page: current + 1})

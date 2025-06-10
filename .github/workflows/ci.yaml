@@ -59,13 +59,13 @@ jobs:
         run: |
           ./baton-zuper \
             --api-url "$URL" \
-            --token "$TOKEN" \
+            --api-key "$TOKEN" \
           capabilities
       - name: Run basic sync test
         run: |
           ./baton-zuper \
             --api-url "$URL" \
-            --token "$TOKEN" \
+            --api-key "$TOKEN" \
             --log-level debug \
             --file sync.c1z
 
