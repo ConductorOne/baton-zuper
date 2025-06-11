@@ -7,6 +7,7 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	grantpkg "github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-zuper/pkg/client"
 )
@@ -14,13 +15,12 @@ import (
 // UserClient defines the interface for fetching users with pagination options.
 type UserClient interface {
 	GetUsers(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	GetUserByID(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
 }
 
 type userBuilder struct {
-	resourceType      *v2.ResourceType
-	client            UserClient
-	roleBuilder       *roleBuilder
-	accessRoleBuilder *accessRoleBuilder
+	resourceType *v2.ResourceType
+	client       UserClient
 }
 
 // ResourceType returns the resource type for users.
@@ -68,38 +68,31 @@ func (o *userBuilder) Entitlements(_ context.Context, resource *v2.Resource, _ *
 
 // Grants returns the grants for a user resource, including roles and access roles.
 func (o *userBuilder) Grants(ctx context.Context, resourceUser *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
-	// Grants Role.
-	roleKey, annos, err := o.findUserRoleKey(ctx, resourceUser.Id.Resource, pToken)
+	annos := annotations.Annotations{}
+	var grants []*v2.Grant
+
+	user, _, err := o.client.GetUserByID(ctx, resourceUser.Id.Resource)
 	if err != nil {
 		return nil, "", annos, err
 	}
-
-	roleResource, err := o.roleBuilder.GetRoleResource(ctx)
-	if err != nil {
-		return nil, "", annos, fmt.Errorf("failed to get role resource: %w", err)
+	if user == nil {
+		return nil, "", annos, nil
 	}
 
-	grants, err := createUserGrants(roleResource, resourceUser, roleKey)
-	if err != nil {
-		return nil, "", annos, fmt.Errorf("failed to create grants for %s: %w", resourceUser.Id.Resource, err)
+	// Grant Role.
+	if user.Role != nil {
+		roleRes := makeRoleSubjectID(user.Role.RoleKey, user)
+		userId := makeUserSubjectID(user.UserUID)
+		grant := grantpkg.NewGrant(roleRes, assignedEntitlement, userId)
+		grants = append(grants, grant)
 	}
 
-	// Grants AccessRole.
-	accessRoleUID, annos2, err := o.findUserAccessRoleUID(ctx, resourceUser.Id.Resource, pToken)
-	if err == nil && accessRoleUID != "" && o.accessRoleBuilder != nil {
-		accessRoleResource, err := resource.NewRoleResource(
-			accessRoleEntitlementPrefix,
-			o.accessRoleBuilder.ResourceType(ctx),
-			accessRoleEntitlementPrefix,
-			nil,
-		)
-		if err == nil {
-			accessRoleGrants, _ := createUserAccessRoleGrants(accessRoleResource, resourceUser, accessRoleUID)
-			grants = append(grants, accessRoleGrants...)
-		}
-		for _, annon := range annos2 {
-			annos.Append(annon)
-		}
+	// Grant AccessRole.
+	if user.AccessRole != nil {
+		accessRoleRes := makeAccessRoleSubjectID(user.AccessRole.AccessRoleUID, user)
+		userId := makeUserSubjectID(user.UserUID)
+		grant := grantpkg.NewGrant(accessRoleRes, assignedEntitlement, userId)
+		grants = append(grants, grant)
 	}
 
 	return grants, "", annos, nil
@@ -148,12 +141,40 @@ func parseIntoUserResource(user *client.ZuperUser) (*v2.Resource, error) {
 	return ret, nil
 }
 
+// makeUserSubjectID creates a ResourceId for a user based on their user ID.
+func makeUserSubjectID(userID string) *v2.ResourceId {
+	return &v2.ResourceId{
+		ResourceType: userResourceType.Id,
+		Resource:     userID,
+	}
+}
+
+// makeRoleSubjectID creates a Resource for a role grant.
+func makeRoleSubjectID(roleID string, user *client.ZuperUser) *v2.Resource {
+	return &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: roleResourceType.Id,
+			Resource:     roleID,
+		},
+		DisplayName: user.Role.RoleName,
+	}
+}
+
+// makeAccessRoleSubjectID creates a Resource for an access role grant.
+func makeAccessRoleSubjectID(accessRoleUID string, user *client.ZuperUser) *v2.Resource {
+	return &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: accessRoleResourceType.Id,
+			Resource:     accessRoleUID,
+		},
+		DisplayName: user.AccessRole.AccessRoleName,
+	}
+}
+
 // newUserBuilder creates a new userBuilder instance.
-func newUserBuilder(client UserClient, roleBuilder *roleBuilder, accessRoleBuilder *accessRoleBuilder) *userBuilder {
+func newUserBuilder(client UserClient) *userBuilder {
 	return &userBuilder{
-		resourceType:      userResourceType,
-		client:            client,
-		roleBuilder:       roleBuilder,
-		accessRoleBuilder: accessRoleBuilder,
+		resourceType: userResourceType,
+		client:       client,
 	}
 }

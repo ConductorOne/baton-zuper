@@ -53,7 +53,7 @@ func TestUserBuilderList(t *testing.T) {
 	ctx := context.Background()
 	client := initClient(t)
 
-	ub := newUserBuilder(client, nil, nil)
+	ub := newUserBuilder(client)
 	users, nextToken, _, err := ub.List(ctx, nil, nil)
 
 	assert.NoError(t, err)

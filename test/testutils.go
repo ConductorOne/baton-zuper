@@ -21,7 +21,8 @@ const (
 
 // MockClient is a mock implementation of the Zuper client for testing.
 type MockClient struct {
-	GetUsersFunc func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	GetUsersFunc    func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	GetUserByIDFunc func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
 }
 
 // GetUsers calls the mock method if it is defined.
@@ -30,6 +31,14 @@ func (m *MockClient) GetUsers(ctx context.Context, options client.PageOptions) (
 		return m.GetUsersFunc(ctx, options)
 	}
 	return nil, "", nil, nil
+}
+
+// GetUserByID calls the mock method if it is defined.
+func (m *MockClient) GetUserByID(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error) {
+	if m.GetUserByIDFunc != nil {
+		return m.GetUserByIDFunc(ctx, userUID)
+	}
+	return nil, nil, nil
 }
 
 // ReadFile loads content from a JSON file from /test/mock/.

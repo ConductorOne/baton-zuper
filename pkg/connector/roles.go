@@ -12,16 +12,13 @@ import (
 	"github.com/conductorone/baton-zuper/pkg/client"
 )
 
+// roleDefinition holds static information about a role.
 type roleDefinition struct {
 	ID          string
 	DisplayName string
 	Description string
 	RoleKey     string
 }
-
-const (
-	roleResourceID = "zuper-roles"
-)
 
 // roleDefinition{ role_id, role_name, role_descripcion, role_key}.
 var roleDefinitions = []roleDefinition{
@@ -41,66 +38,52 @@ func (r *roleBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
 	return r.resourceType
 }
 
-// List returns a singleton resource for all defined roles, simulating pagination.
+// List returns all defined roles as individual resources, simulating pagination.
 func (r *roleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
 	annos := annotations.Annotations{}
-	bag, pageToken, err := parsePageToken(pToken.Token, &v2.ResourceId{ResourceType: roleResourceType.Id})
-	if err != nil {
-		return nil, "", annos, err
-	}
-	roleResource, err := resource.NewRoleResource(
-		roleResourceID,
-		r.resourceType,
-		roleResourceID,
-		nil,
-	)
-	if err != nil {
-		return nil, "", annos, fmt.Errorf("failed to create role resource: %w", err)
-	}
 
-	var outToken string
-	if pageToken == "" {
-		outToken, err = bag.NextToken("end")
-		if err != nil {
-			return nil, "", annos, err
-		}
-		return []*v2.Resource{roleResource}, outToken, annos, nil
-	}
-	return []*v2.Resource{}, "", annos, nil
-}
-
-// GetRoleResource returns the singleton role resource.
-func (r *roleBuilder) GetRoleResource(ctx context.Context) (*v2.Resource, error) {
-	roleResource, err := resource.NewRoleResource(
-		roleResourceID,
-		r.resourceType,
-		roleResourceID,
-		nil,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create role resource: %w", err)
-	}
-	return roleResource, nil
-}
-
-// Entitlements returns all entitlements for the given role resource.
-func (r *roleBuilder) Entitlements(ctx context.Context, roleRes *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
-	annos := annotations.Annotations{}
-	entitlements := make([]*v2.Entitlement, 0, len(roleDefinitions))
+	var resources []*v2.Resource
 	for _, role := range roleDefinitions {
-		entitlements = append(entitlements, entitlement.NewPermissionEntitlement(
-			roleRes,
+		profile := map[string]interface{}{
+			"role_id":          role.ID,
+			"role_key":         role.RoleKey,
+			"role_display":     role.DisplayName,
+			"role_description": role.Description,
+		}
+		roleResource, err := resource.NewRoleResource(
+			role.DisplayName,
+			r.resourceType,
 			role.RoleKey,
-			entitlement.WithDisplayName(role.DisplayName),
-			entitlement.WithDescription(role.Description),
-			entitlement.WithGrantableTo(userResourceType),
-		))
+			[]resource.RoleTraitOption{resource.WithRoleProfile(profile)},
+		)
+		if err != nil {
+			return nil, "", annos, fmt.Errorf("failed to create role resource: %w", err)
+		}
+		resources = append(resources, roleResource)
 	}
-
-	return entitlements, "", annos, nil
+	return resources, "", annos, nil
 }
 
-// Grants returns the grants for a role resource (none in this implementation).
+// Entitlements returns an 'assigned' entitlement for the given role resource.
+func (r *roleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+	annos := annotations.Annotations{}
+
+	assigmentOptions := []entitlement.EntitlementOption{
+		entitlement.WithGrantableTo(userResourceType),
+		entitlement.WithDescription(fmt.Sprintf("%s to %s role", assignedEntitlement, resource.DisplayName)),
+		entitlement.WithDisplayName(fmt.Sprintf("%s role %s", resource.DisplayName, assignedEntitlement)),
+	}
+
+	ent := entitlement.NewAssignmentEntitlement(
+		resource,
+		assignedEntitlement,
+		assigmentOptions...,
+	)
+
+	return []*v2.Entitlement{ent}, "", annos, nil
+}
+
+// Grants returns no grants for a role resource (handled in userBuilder).
 func (r *roleBuilder) Grants(ctx context.Context, roleRes *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
 }

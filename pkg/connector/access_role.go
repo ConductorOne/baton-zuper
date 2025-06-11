@@ -15,8 +15,7 @@ import (
 )
 
 const (
-	accessRoleEntitlementPrefix = "access-role"
-	cacheTTL                    = 5 * time.Minute
+	cacheTTL = 5 * time.Minute
 )
 
 // accessRoleBuilder manages access role resources and their entitlements.
@@ -29,19 +28,20 @@ type accessRoleBuilder struct {
 }
 
 // newAccessRoleBuilder creates a new accessRoleBuilder instance.
-func newAccessRoleBuilder(client UserClient, roleCache map[string]*client.AccessRole) *accessRoleBuilder {
+func newAccessRoleBuilder(client UserClient) *accessRoleBuilder {
 	return &accessRoleBuilder{
 		resourceType: accessRoleResourceType,
 		client:       client,
-		roleCache:    roleCache,
 	}
 }
 
 // UpdateCacheWithUsers updates the access role cache with roles from a list of users.
-func (b *accessRoleBuilder) UpdateCacheWithUsers(users []*client.ZuperUser) {
+func (b *accessRoleBuilder) updateCacheWithUsers(users []*client.ZuperUser) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-
+	if b.roleCache == nil {
+		b.roleCache = make(map[string]*client.AccessRole)
+	}
 	for _, user := range users {
 		if user.AccessRole != nil {
 			b.roleCache[user.AccessRole.AccessRoleUID] = user.AccessRole
@@ -76,19 +76,8 @@ func (b *accessRoleBuilder) loadAccessRoles(ctx context.Context) error {
 		pToken = nextToken
 	}
 
-	b.UpdateCacheWithUsers(allUsers)
+	b.updateCacheWithUsers(allUsers)
 	return nil
-}
-
-// GetAccessRole retrieves an access role from the cache by UID.
-func (b *accessRoleBuilder) GetAccessRole(ctx context.Context, uid string) (*client.AccessRole, error) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	role, ok := b.roleCache[uid]
-	if !ok {
-		return nil, fmt.Errorf("access role not found: %s", uid)
-	}
-	return role, nil
 }
 
 // ResourceType returns the resource type for access roles.
@@ -96,54 +85,49 @@ func (b *accessRoleBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 	return b.resourceType
 }
 
-// List returns the singleton access role resource, simulating pagination.
+// List returns all access roles as individual resources, simulating pagination.
 func (b *accessRoleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
 	annos := annotations.Annotations{}
-	bag, pageToken, err := parsePageToken(pToken.Token, &v2.ResourceId{ResourceType: accessRoleResourceType.Id})
+
+	err := b.loadAccessRoles(ctx)
 	if err != nil {
 		return nil, "", annos, err
 	}
-	accessRoleResource, err := resource.NewRoleResource(
-		accessRoleEntitlementPrefix,
-		b.resourceType,
-		accessRoleEntitlementPrefix,
-		nil,
-	)
-	if err != nil {
-		return nil, "", annos, fmt.Errorf("failed to create access role resource: %w", err)
+
+	var resources []*v2.Resource
+	for uid, role := range b.roleCache {
+		profile := map[string]interface{}{
+			"AccessRoleUID":   role.AccessRoleUID,
+			"RoleDescription": role.RoleDescription,
+		}
+		accessRoleResource, err := resource.NewRoleResource(
+			role.AccessRoleName,
+			b.resourceType,
+			uid,
+			[]resource.RoleTraitOption{resource.WithRoleProfile(profile)},
+		)
+		if err != nil {
+			return nil, "", annos, fmt.Errorf("failed to create access role resource: %w", err)
+		}
+		resources = append(resources, accessRoleResource)
 	}
 
-	var outToken string
-	if pageToken == "" {
-		outToken, err = bag.NextToken("end")
-		if err != nil {
-			return nil, "", annos, err
-		}
-		return []*v2.Resource{accessRoleResource}, outToken, annos, nil
-	}
-	return []*v2.Resource{}, "", annos, nil
+	return resources, "", annos, nil
 }
 
-// Entitlements returns all access role entitlements from the cache.
+// Entitlements returns an 'assigned' entitlement for the given access role resource.
 func (b *accessRoleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
-	err := b.loadAccessRoles(ctx)
-	if err != nil {
-		return nil, "", nil, err
+	annos := annotations.Annotations{}
+	name := resource.DisplayName
+	assigmentOptions := []entitlement.EntitlementOption{
+		entitlement.WithGrantableTo(userResourceType),
+		entitlement.WithDescription(fmt.Sprintf("%s to %s access role", assignedEntitlement, name)),
+		entitlement.WithDisplayName(fmt.Sprintf("%s access role %s", name, assignedEntitlement)),
 	}
-
-	var entitlements []*v2.Entitlement
-	for _, role := range b.roleCache {
-		ent := entitlement.NewPermissionEntitlement(
-			resource,
-			role.AccessRoleUID,
-			entitlement.WithDisplayName(role.AccessRoleName),
-			entitlement.WithDescription(role.RoleDescription),
-			entitlement.WithGrantableTo(userResourceType),
-		)
-		entitlements = append(entitlements, ent)
+	entitlements := []*v2.Entitlement{
+		entitlement.NewAssignmentEntitlement(resource, assignedEntitlement, assigmentOptions...),
 	}
-
-	return entitlements, "", nil, nil
+	return entitlements, "", annos, nil
 }
 
 // Grants returns the grants for an access role resource (none in this implementation).

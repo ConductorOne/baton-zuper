@@ -23,7 +23,7 @@ type ZuperUser struct {
 	IsDeleted   bool        `json:"is_deleted"`
 	CreatedAt   string      `json:"created_at"`
 	UpdatedAt   string      `json:"updated_at"`
-	Role        Role        `json:"role"`
+	Role        *Role       `json:"role"`
 	AccessRole  *AccessRole `json:"access_role"`
 }
 
@@ -33,6 +33,11 @@ type UsersResponse struct {
 	TotalRecords int         `json:"total_records"`
 	TotalPages   int         `json:"total_pages"`
 	CurrentPage  int         `json:"current_page"`
+}
+
+type UserDetailsResponse struct {
+	Type string    `json:"type"`
+	Data ZuperUser `json:"data"`
 }
 
 // Error Models.

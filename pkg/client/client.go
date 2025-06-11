@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	getUsers = "/api/user/all"
+	getUsers    = "/api/user/all"
+	getUserByID = "/api/user/"
 )
 
 // Client is the Zuper API client for Baton.
@@ -72,11 +73,25 @@ func (c *Client) GetUsers(ctx context.Context, opts PageOptions) ([]*ZuperUser, 
 	nextToken := getNextToken(usersResponse.CurrentPage, usersResponse.TotalPages)
 
 	var users []*ZuperUser
-	for i := range usersResponse.Data {
-		users = append(users, &usersResponse.Data[i])
+	for _, user := range usersResponse.Data {
+		users = append(users, &user)
 	}
 
 	return users, nextToken, annos, nil
+}
+
+// GetUserByID fetches the details of a user by their user_uid from the Zuper API.
+func (c *Client) GetUserByID(ctx context.Context, userUID string) (*ZuperUser, annotations.Annotations, error) {
+	userURL, err := prepareUserDetailsRequest(c.apiUrl, getUserByID, userUID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var userResponse UserDetailsResponse
+	_, annos, err := c.doRequest(ctx, http.MethodGet, userURL, &userResponse)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &userResponse.Data, annos, nil
 }
 
 // doRequest executes an HTTP request and decodes the response into the provided result.

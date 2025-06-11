@@ -67,6 +67,9 @@ func TestUserBuilder_List(t *testing.T) {
 					}
 					return mockUsers, tt.nextToken, annos, nil
 				},
+				GetUserByIDFunc: func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error) {
+					return nil, nil, nil // No se usa en estos tests
+				},
 			}
 
 			builder := &userBuilder{

@@ -128,3 +128,47 @@ func TestDoRequestInvalidURL(t *testing.T) {
 	_, _, err = client.doRequest(ctx, http.MethodGet, "::bad_url::", nil)
 	assert.Error(t, err)
 }
+
+func TestGetUserByID(t *testing.T) {
+	t.Run("success, user details", func(t *testing.T) {
+		mockData, err := os.ReadFile("../../test/mock/user_details_success.json")
+		assert.NoError(t, err)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodGet, r.Method)
+			assert.Contains(t, r.URL.String(), "/api/user/")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(mockData)
+		}))
+		defer server.Close()
+
+		ctx := context.Background()
+		httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+		client := NewClient(ctx, server.URL, "dummy-token", httpClient)
+
+		user, annos, err := client.GetUserByID(ctx, "c3dea3e3-8bc3-459f-aaeb-04fd6f501fa5")
+		assert.NoError(t, err)
+		assert.NotNil(t, user)
+		assert.Equal(t, "Ramon", user.FirstName)
+		assert.Equal(t, "Mendoza", user.LastName)
+		assert.Equal(t, "Ramon.Mendoza@Powin.com", user.Email)
+		assert.IsType(t, annotations.Annotations{}, annos)
+	})
+
+	t.Run("error, not found", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		ctx := context.Background()
+		httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
+		client := NewClient(ctx, server.URL, "dummy-token", httpClient)
+
+		user, annos, err := client.GetUserByID(ctx, "non-existent-id")
+		assert.Error(t, err)
+		assert.Nil(t, user)
+		assert.Nil(t, annos)
+	})
+}

@@ -74,7 +74,10 @@ func preparePagedRequest(baseURL, endpoint string, opts PageOptions) (*url.URL, 
 // getNextToken returns the next page token if more pages are available.
 func getNextToken(current, total int) string {
 	if current < total {
-		token, _ := encodePageToken(&pageToken{Page: current + 1})
+		token, err := encodePageToken(&pageToken{Page: current + 1})
+		if err != nil {
+			return ""
+		}
 		return token
 	}
 	return ""
@@ -83,4 +86,20 @@ func getNextToken(current, total int) string {
 // Error implements the uhttp.ErrorResponse interface.
 func (e *ZuperError) Message() string {
 	return e.MessageError
+}
+
+// prepareUserDetailsRequest builds a request URL for the Zuper API user details endpoint.
+func prepareUserDetailsRequest(baseURL, endpoint, userUID string) (string, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid base URL: %w", err)
+	}
+
+	rel, err := url.Parse(endpoint + userUID)
+	if err != nil {
+		return "", fmt.Errorf("invalid endpoint: %w", err)
+	}
+
+	fullURL := base.ResolveReference(rel)
+	return fullURL.String(), nil
 }
