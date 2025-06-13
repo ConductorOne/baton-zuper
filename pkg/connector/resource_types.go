@@ -20,4 +20,9 @@ var (
 		DisplayName: "Access Role",
 		Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_ROLE},
 	}
+	teamResourceType = &v2.ResourceType{
+		Id:          "team",
+		DisplayName: "Team",
+		Traits:      []v2.ResourceType_Trait{v2.ResourceType_TRAIT_GROUP},
+	}
 )

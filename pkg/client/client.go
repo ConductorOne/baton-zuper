@@ -13,6 +13,8 @@ import (
 
 const (
 	userEndpoint = "/api/user"
+	teamEndpoint = "/api/team"
+	teamsSummary = "/api/teams/summary"
 )
 
 // Client is the Zuper API client for Baton.
@@ -123,7 +125,53 @@ func (c *Client) CreateUser(ctx context.Context, user UserPayload) (*CreateUserR
 	return &result, annos, nil
 }
 
-// doRequest executes an HTTP request and decodes the response into the provided result. If body is not nil, it serializes it and sends it as the body.
+// GetTeams fetches a paginated list of teams from the Zuper API.
+func (c *Client) GetTeams(ctx context.Context, opts PageOptions) ([]*Team, string, annotations.Annotations, error) {
+	if opts.PageSize == 0 {
+		opts.PageSize = DefaultPageSize
+	}
+
+	teamsURL, _, err := preparePagedRequest(c.apiUrl, teamsSummary, opts)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	var teamsResponse TeamsResponse
+	_, annos, err := c.doRequest(ctx, http.MethodGet, teamsURL.String(), nil, &teamsResponse)
+	if err != nil {
+		return nil, "", nil, err
+	}
+
+	nextToken := getNextToken(teamsResponse.CurrentPage, teamsResponse.TotalPages)
+
+	var teams []*Team
+	for _, team := range teamsResponse.Data {
+		teams = append(teams, &team)
+	}
+
+	return teams, nextToken, annos, nil
+}
+
+// GetTeamUsers fetches the users of a team from the Zuper API.
+func (c *Client) GetTeamUsers(ctx context.Context, teamID string, opts PageOptions) ([]*ZuperUser, string, annotations.Annotations, error) {
+	teamDetailsURL, err := buildResourceURL(c.apiUrl, teamEndpoint, teamID)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	var resp TeamDetailsWithUsersResponse
+	_, annos, err := c.doRequest(ctx, http.MethodGet, teamDetailsURL, nil, &resp)
+	if err != nil {
+		return nil, "", annos, err
+	}
+	var users []*ZuperUser
+	for _, user := range resp.Data.Users {
+		userCopy := user
+		users = append(users, &userCopy)
+	}
+	return users, "", annos, nil
+}
+
+// doRequest executes an HTTP request and decodes the response into the provided result.
 func (c *Client) doRequest(
 	ctx context.Context,
 	method string,
