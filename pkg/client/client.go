@@ -2,8 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -14,9 +12,7 @@ import (
 )
 
 const (
-	getUsers    = "/api/user/all"
-	getUserByID = "/api/user/"
-	createUsers = "/api/user"
+	userEndpoint = "/api/user"
 )
 
 // Client is the Zuper API client for Baton.
@@ -62,13 +58,13 @@ func (c *Client) GetUsers(ctx context.Context, opts PageOptions) ([]*ZuperUser, 
 		opts.PageSize = DefaultPageSize
 	}
 
-	usersURL, _, err := preparePagedRequest(c.apiUrl, getUsers, opts)
+	usersURL, _, err := preparePagedRequest(c.apiUrl, userEndpoint, opts, "all")
 	if err != nil {
 		return nil, "", nil, err
 	}
 
 	var usersResponse UsersResponse
-	_, annos, err := c.doRequest(ctx, http.MethodGet, usersURL.String(), &usersResponse)
+	_, annos, err := c.doRequest(ctx, http.MethodGet, usersURL.String(), nil, &usersResponse)
 	if err != nil {
 		return nil, "", nil, err
 	}
@@ -85,12 +81,12 @@ func (c *Client) GetUsers(ctx context.Context, opts PageOptions) ([]*ZuperUser, 
 
 // GetUserByID fetches the details of a user by their user_uid from the Zuper API.
 func (c *Client) GetUserByID(ctx context.Context, userUID string) (*ZuperUser, annotations.Annotations, error) {
-	userURL, err := prepareUserDetailsRequest(c.apiUrl, getUserByID, userUID)
+	userURL, err := buildResourceURL(c.apiUrl, userEndpoint, userUID)
 	if err != nil {
 		return nil, nil, err
 	}
 	var userResponse UserDetailsResponse
-	_, annos, err := c.doRequest(ctx, http.MethodGet, userURL, &userResponse)
+	_, annos, err := c.doRequest(ctx, http.MethodGet, userURL, nil, &userResponse)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -114,12 +110,12 @@ func (c *Client) CreateUser(ctx context.Context, user UserPayload) (*CreateUserR
 		User:      user,
 	}
 
-	userCreateURL, err := prepareUserCreateRequest(c.apiUrl, createUsers)
+	userCreateURL, err := buildResourceURL(c.apiUrl, userEndpoint)
 	if err != nil {
 		return nil, nil, err
 	}
 	var result CreateUserResponse
-	_, annos, err := c.doRequestWithBody(ctx, http.MethodPost, userCreateURL, payload, &result)
+	_, annos, err := c.doRequest(ctx, http.MethodPost, userCreateURL, payload, &result)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,25 +123,34 @@ func (c *Client) CreateUser(ctx context.Context, user UserPayload) (*CreateUserR
 	return &result, annos, nil
 }
 
-// doRequest executes an HTTP request and decodes the response into the provided result.
+// doRequest executes an HTTP request and decodes the response into the provided result. If body is not nil, it serializes it and sends it as the body.
 func (c *Client) doRequest(
 	ctx context.Context,
 	method string,
 	requestURL string,
+	body interface{},
 	res interface{},
 ) (http.Header, annotations.Annotations, error) {
 	parsedURL, err := url.Parse(requestURL)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	var zuperErr ZuperError
+	requestOptions := []uhttp.RequestOption{
+		uhttp.WithContentTypeJSONHeader(),
+		uhttp.WithAcceptJSONHeader(),
+		uhttp.WithHeader("x-api-key", c.apiKey),
+	}
+	if body != nil {
+		requestOptions = append(requestOptions, uhttp.WithJSONBody(body))
+	}
+
 	req, err := c.wrapper.NewRequest(
 		ctx,
 		method,
 		parsedURL,
-		uhttp.WithContentTypeJSONHeader(),
-		uhttp.WithAcceptJSONHeader(),
-		uhttp.WithHeader("x-api-key", c.apiKey),
+		requestOptions...,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -158,45 +163,6 @@ func (c *Client) doRequest(
 	doOptions = append(doOptions, uhttp.WithErrorResponse(&zuperErr))
 
 	resp, err := c.wrapper.Do(req, doOptions...)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer resp.Body.Close()
-
-	annos := annotations.Annotations{}
-	if desc, err := ratelimit.ExtractRateLimitData(resp.StatusCode, &resp.Header); err == nil {
-		annos.WithRateLimiting(desc)
-	}
-
-	return resp.Header, annos, nil
-}
-
-func (c *Client) doRequestWithBody(
-	ctx context.Context,
-	method string,
-	url string,
-	body interface{},
-	res interface{},
-) (http.Header, annotations.Annotations, error) {
-	bodyBytes, err := json.Marshal(body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	req, err := c.wrapper.NewRequest(
-		ctx,
-		method,
-		mustParseURL(url),
-		uhttp.WithContentTypeJSONHeader(),
-		uhttp.WithAcceptJSONHeader(),
-		uhttp.WithHeader("x-api-key", c.apiKey),
-		uhttp.WithBody(bodyBytes),
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	resp, err := c.wrapper.Do(req, uhttp.WithJSONResponse(res))
 	if err != nil {
 		return nil, nil, err
 	}

@@ -39,19 +39,25 @@ func decodePageToken(pToken string) (*pageToken, error) {
 	return &pt, nil
 }
 
+// buildResourceURL builds a request URL for the Zuper API for any endpoint and optional path elements.
+func buildResourceURL(baseURL string, endpoint string, elems ...string) (string, error) {
+	joined, err := url.JoinPath(baseURL, append([]string{endpoint}, elems...)...)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL: %w", err)
+	}
+	return joined, nil
+}
+
 // preparePagedRequest builds a paginated request URL for the Zuper API.
-func preparePagedRequest(baseURL, endpoint string, opts PageOptions) (*url.URL, int, error) {
-	base, err := url.Parse(baseURL)
+func preparePagedRequest(baseURL string, endpoint string, opts PageOptions, elems ...string) (*url.URL, int, error) {
+	urlStr, err := buildResourceURL(baseURL, endpoint, elems...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("invalid base URL: %w", err)
+		return nil, 0, fmt.Errorf("invalid base or endpoint: %w", err)
 	}
-
-	rel, err := url.Parse(endpoint)
+	fullURL, err := url.Parse(urlStr)
 	if err != nil {
-		return nil, 0, fmt.Errorf("invalid endpoint: %w", err)
+		return nil, 0, fmt.Errorf("invalid URL: %w", err)
 	}
-
-	fullURL := base.ResolveReference(rel)
 
 	page := 1
 	if opts.PageToken != "" {
@@ -72,7 +78,7 @@ func preparePagedRequest(baseURL, endpoint string, opts PageOptions) (*url.URL, 
 }
 
 // getNextToken returns the next page token if more pages are available.
-func getNextToken(current, total int) string {
+func getNextToken(current int, total int) string {
 	if current < total {
 		token, err := encodePageToken(&pageToken{Page: current + 1})
 		if err != nil {
@@ -86,44 +92,4 @@ func getNextToken(current, total int) string {
 // Error implements the uhttp.ErrorResponse interface.
 func (e *ZuperError) Message() string {
 	return e.MessageError
-}
-
-// prepareUserDetailsRequest builds a request URL for the Zuper API user details endpoint.
-func prepareUserDetailsRequest(baseURL string, endpoint string, userUID string) (string, error) {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return "", fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	rel, err := url.Parse(endpoint + userUID)
-	if err != nil {
-		return "", fmt.Errorf("invalid endpoint: %w", err)
-	}
-
-	fullURL := base.ResolveReference(rel)
-	return fullURL.String(), nil
-}
-
-// prepareUserCreateRequest builds a request URL for the Zuper API user create endpoint.
-func prepareUserCreateRequest(baseURL string, endpoint string) (string, error) {
-	base, err := url.Parse(baseURL)
-	if err != nil {
-		return "", fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	rel, err := url.Parse(endpoint)
-	if err != nil {
-		return "", fmt.Errorf("invalid endpoint: %w", err)
-	}
-
-	fullURL := base.ResolveReference(rel)
-	return fullURL.String(), nil
-}
-
-func mustParseURL(raw string) *url.URL {
-	u, err := url.Parse(raw)
-	if err != nil {
-		panic(fmt.Sprintf("invalid URL: %s", raw))
-	}
-	return u
 }

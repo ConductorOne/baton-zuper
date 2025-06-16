@@ -41,23 +41,23 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 		AccountCreationSchema: &v2.ConnectorAccountCreationSchema{
 			FieldMap: map[string]*v2.ConnectorAccountCreationSchema_Field{
 				"first_name": {
-					DisplayName: "first_name",
+					DisplayName: "First Name",
 					Required:    true,
 					Description: "This first_name will be used for the user.",
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
-					Placeholder: "first_name",
+					Placeholder: "John",
 					Order:       1,
 				},
 				"last_name": {
-					DisplayName: "last_name",
+					DisplayName: "Last Name",
 					Required:    true,
 					Description: "This last_name will be used for the user.",
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
-					Placeholder: "last_name",
+					Placeholder: "Doe",
 					Order:       2,
 				},
 				"email": {
@@ -67,17 +67,17 @@ func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error)
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
-					Placeholder: "Email",
+					Placeholder: "john.doe@example.com",
 					Order:       3,
 				},
 				"emp_code": {
-					DisplayName: "Emp_code",
+					DisplayName: "Employee Code",
 					Required:    true,
 					Description: "This emp_code will be used for the user.",
 					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
 						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
 					},
-					Placeholder: "emp_code",
+					Placeholder: "EMP12345",
 					Order:       4,
 				},
 			},

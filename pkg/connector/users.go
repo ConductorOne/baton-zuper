@@ -7,7 +7,6 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
-	"github.com/conductorone/baton-sdk/pkg/crypto"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	grantpkg "github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
@@ -105,35 +104,10 @@ func (o *userBuilder) Grants(ctx context.Context, resourceUser *v2.Resource, pTo
 func (u *userBuilder) CreateAccountCapabilityDetails(ctx context.Context) (*v2.CredentialDetailsAccountProvisioning, annotations.Annotations, error) {
 	return &v2.CredentialDetailsAccountProvisioning{
 		SupportedCredentialOptions: []v2.CapabilityDetailCredentialOption{
-			v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
 			v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_RANDOM_PASSWORD,
 		},
-		PreferredCredentialOption: v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_NO_PASSWORD,
+		PreferredCredentialOption: v2.CapabilityDetailCredentialOption_CAPABILITY_DETAIL_CREDENTIAL_OPTION_RANDOM_PASSWORD,
 	}, nil, nil
-}
-
-// Helper to get the password based on credentialOptions.
-func getCredentialOption(credentialOptions *v2.CredentialOptions) (string, bool, error) {
-	if credentialOptions == nil {
-		return "", false, nil
-	}
-	if credentialOptions.GetNoPassword() != nil {
-		return "", false, nil
-	}
-	if credentialOptions.GetRandomPassword() == nil {
-		return "", false, nil
-	}
-	length := credentialOptions.GetRandomPassword().GetLength()
-	if length < 8 {
-		length = 8
-	}
-	plaintextPassword, err := crypto.GenerateRandomPassword(&v2.CredentialOptions_RandomPassword{
-		Length: length,
-	})
-	if err != nil {
-		return "", false, err
-	}
-	return plaintextPassword, true, nil
 }
 
 // CreateAccount provisions a new Zuper user based on AccountInfo and CredentialOptions.
@@ -160,23 +134,18 @@ func (u *userBuilder) CreateAccount(
 		}
 	}
 
-	password, generatedPassword, err := getCredentialOption(credentialOptions)
+	generatedPassword, err := generateCredentials(credentialOptions)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if password == "" {
-		password, err = crypto.GenerateRandomPassword(&v2.CredentialOptions_RandomPassword{Length: 12})
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to generate random password: %w", err)
-		}
-		generatedPassword = true
+	if generatedPassword == "" {
+		return nil, nil, nil, fmt.Errorf("password is required for user creation")
 	}
-	// We establish the most basic role of Zuper for user creation.
 	userPayload := client.UserPayload{
 		FirstName:   profile["first_name"].(string),
 		LastName:    profile["last_name"].(string),
 		Email:       profile["email"].(string),
-		Password:    password,
+		Password:    generatedPassword,
 		Designation: "Field Executive",
 		EmpCode:     profile["emp_code"].(string),
 		RoleID:      "3",
@@ -203,10 +172,7 @@ func (u *userBuilder) CreateAccount(
 		return nil, nil, nil, fmt.Errorf("failed to parse created user: %w", err)
 	}
 
-	var plaintexts []*v2.PlaintextData
-	if generatedPassword {
-		plaintexts = []*v2.PlaintextData{{Bytes: []byte(password)}}
-	}
+	plaintexts := []*v2.PlaintextData{{Bytes: []byte(generatedPassword)}}
 
 	return &v2.CreateAccountResponse_SuccessResult{
 		Resource: userResource,

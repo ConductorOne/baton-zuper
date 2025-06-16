@@ -99,7 +99,7 @@ func TestGetUsers(t *testing.T) {
 		ctx := context.Background()
 		httpClient, _ := uhttp.NewBaseHttpClientWithContext(ctx, &http.Client{})
 		client := NewClient(ctx, "::bad_url::", "token", httpClient)
-		_, _, err := client.doRequest(ctx, http.MethodGet, "::bad_url::", nil)
+		_, _, err := client.doRequest(ctx, http.MethodGet, "::bad_url::", nil, nil)
 		assert.Error(t, err)
 	})
 
@@ -225,6 +225,6 @@ func TestDoRequestInvalidURL(t *testing.T) {
 
 	client := NewClient(ctx, "http://invalid-url", "token", httpClient)
 
-	_, _, err = client.doRequest(ctx, http.MethodGet, "::bad_url::", nil)
+	_, _, err = client.doRequest(ctx, http.MethodGet, "::bad_url::", nil, nil)
 	assert.Error(t, err)
 }
