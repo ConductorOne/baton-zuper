@@ -37,7 +37,51 @@ func (d *Connector) Asset(ctx context.Context, asset *v2.AssetRef) (string, io.R
 func (d *Connector) Metadata(ctx context.Context) (*v2.ConnectorMetadata, error) {
 	return &v2.ConnectorMetadata{
 		DisplayName: "Zuper",
-		Description: "Connector syncs data users and teams of Zuper",
+		Description: "Connector syncs data users, teams and create users of Zuper",
+		AccountCreationSchema: &v2.ConnectorAccountCreationSchema{
+			FieldMap: map[string]*v2.ConnectorAccountCreationSchema_Field{
+				"first_name": {
+					DisplayName: "First Name",
+					Required:    true,
+					Description: "This first_name will be used for the user.",
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+					Placeholder: "John",
+					Order:       1,
+				},
+				"last_name": {
+					DisplayName: "Last Name",
+					Required:    true,
+					Description: "This last_name will be used for the user.",
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+					Placeholder: "Doe",
+					Order:       2,
+				},
+				"email": {
+					DisplayName: "Email",
+					Required:    true,
+					Description: "This email will be used as the login for the user.",
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+					Placeholder: "john.doe@example.com",
+					Order:       3,
+				},
+				"emp_code": {
+					DisplayName: "Employee Code",
+					Required:    true,
+					Description: "This emp_code will be used for the user.",
+					Field: &v2.ConnectorAccountCreationSchema_Field_StringField{
+						StringField: &v2.ConnectorAccountCreationSchema_StringField{},
+					},
+					Placeholder: "EMP12345",
+					Order:       4,
+				},
+			},
+		},
 	}, nil
 }
 

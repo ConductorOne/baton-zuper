@@ -23,6 +23,7 @@ const (
 type MockClient struct {
 	GetUsersFunc    func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
 	GetUserByIDFunc func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
+	CreateUserFunc  func(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error)
 }
 
 // GetUsers calls the mock method if it is defined.
@@ -31,6 +32,14 @@ func (m *MockClient) GetUsers(ctx context.Context, options client.PageOptions) (
 		return m.GetUsersFunc(ctx, options)
 	}
 	return nil, "", nil, nil
+}
+
+// CreateUser calls the mock method if it is defined.
+func (m *MockClient) CreateUser(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error) {
+	if m.CreateUserFunc != nil {
+		return m.CreateUserFunc(ctx, user)
+	}
+	return nil, nil, nil
 }
 
 // GetUserByID calls the mock method if it is defined.

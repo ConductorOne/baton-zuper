@@ -1,7 +1,10 @@
 package connector
 
 import (
+	"errors"
+
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
+	"github.com/conductorone/baton-sdk/pkg/crypto"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 )
 
@@ -25,4 +28,26 @@ func parsePageToken(i string, resourceID *v2.ResourceId) (*pagination.Bag, strin
 	}
 
 	return b, b.PageToken(), nil
+}
+
+// generateCredentials generates a random password based on the credential options.
+func generateCredentials(credentialOptions *v2.CredentialOptions) (string, error) {
+	if credentialOptions == nil || credentialOptions.GetRandomPassword() == nil {
+		return "", errors.New("unsupported credential option: only random password is supported")
+	}
+
+	length := credentialOptions.GetRandomPassword().GetLength()
+	if length < 12 {
+		length = 12
+	}
+
+	password, err := crypto.GenerateRandomPassword(
+		&v2.CredentialOptions_RandomPassword{
+			Length: length,
+		},
+	)
+	if err != nil {
+		return "", err
+	}
+	return password, nil
 }

@@ -47,6 +47,40 @@ type ZuperError struct {
 	Type         string `json:"type"`
 }
 
+// Create Users.
+type WorkHour struct {
+	Day           string `json:"day"`
+	StartTime     string `json:"start_time"`
+	EndTime       string `json:"end_time"`
+	WorkMins      int    `json:"work_mins"`
+	TrackLocation bool   `json:"track_location"`
+	IsEnabled     string `json:"is_enabled"`
+}
+
+type UserPayload struct {
+	FirstName   string `json:"first_name"`
+	LastName    string `json:"last_name"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	Designation string `json:"designation"`
+	EmpCode     string `json:"emp_code"`
+	RoleID      string `json:"role_id"`
+}
+
+type CreateUserRequest struct {
+	WorkHours []WorkHour  `json:"work_hours"`
+	User      UserPayload `json:"user"`
+}
+
+type CreateUserResponse struct {
+	Type    string `json:"type"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
+	Data    struct {
+		UserUID string `json:"user_uid"`
+	} `json:"data"`
+}
+
 // Role & Access Models.
 type Role struct {
 	RoleUID  string `json:"role_uid"`
