@@ -58,6 +58,20 @@ func TestTeamBuilder_List(t *testing.T) {
 					}
 					return mockTeams, tt.nextToken, annos, nil
 				},
+				AssignUserToTeamFunc: func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+					return &client.AssignUserToTeamResponse{
+						Type:    "success",
+						Title:   "User assigned to team",
+						Message: "User assigned to team successfully",
+					}, nil, nil
+				},
+				UnassignUserFromTeamFunc: func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+					return &client.AssignUserToTeamResponse{
+						Type:    "success",
+						Title:   "User unassigned from team",
+						Message: "User unassigned from team successfully",
+					}, nil, nil
+				},
 			}
 
 			builder := &teamBuilder{

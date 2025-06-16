@@ -171,6 +171,42 @@ func (c *Client) GetTeamUsers(ctx context.Context, teamID string) ([]*ZuperUser,
 	return users, "", annos, nil
 }
 
+// AssignUserToTeam assigns a user to a team in Zuper.
+func (c *Client) AssignUserToTeam(ctx context.Context, teamUID string, userUID string) (*AssignUserToTeamResponse, annotations.Annotations, error) {
+	payload := AssignUserToTeamRequest{
+		TeamUID: teamUID,
+		UserUID: userUID,
+	}
+	url, err := buildResourceURL(c.apiUrl, teamEndpoint, "assign")
+	if err != nil {
+		return nil, nil, err
+	}
+	var resp AssignUserToTeamResponse
+	_, annos, err := c.doRequest(ctx, http.MethodPost, url, payload, &resp)
+	if err != nil {
+		return nil, annos, err
+	}
+	return &resp, annos, nil
+}
+
+// UnassignUserFromTeam desasigna un usuario de un team en Zuper.
+func (c *Client) UnassignUserFromTeam(ctx context.Context, teamUID string, userUID string) (*AssignUserToTeamResponse, annotations.Annotations, error) {
+	payload := UnassignUserFromTeamRequest{
+		TeamUID: teamUID,
+		UserUID: userUID,
+	}
+	url, err := buildResourceURL(c.apiUrl, teamEndpoint, "unassign")
+	if err != nil {
+		return nil, nil, err
+	}
+	var resp AssignUserToTeamResponse
+	_, annos, err := c.doRequest(ctx, http.MethodPost, url, payload, &resp)
+	if err != nil {
+		return nil, annos, err
+	}
+	return &resp, annos, nil
+}
+
 // doRequest executes an HTTP request and decodes the response into the provided result.
 func (c *Client) doRequest(
 	ctx context.Context,

@@ -21,6 +21,8 @@ const (
 type teamsClientInterface interface {
 	GetTeams(ctx context.Context, options client.PageOptions) ([]*client.Team, string, annotations.Annotations, error)
 	GetTeamUsers(ctx context.Context, teamID string) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	AssignUserToTeam(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
+	UnassignUserFromTeam(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
 }
 
 // teamBuilder is a builder for team resources.
@@ -137,4 +139,36 @@ func newTeamBuilder(client *client.Client) *teamBuilder {
 		resourceType: teamResourceType,
 		client:       client,
 	}
+}
+
+// Grant implements ResourceProvisionerV2 for entitlement provisioning assign user to team.
+func (t *teamBuilder) Grant(ctx context.Context, principal *v2.Resource, entitlement *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
+	teamID := entitlement.Resource.Id.Resource
+	userID := principal.Id.Resource
+	resp, annos, err := t.client.AssignUserToTeam(ctx, teamID, userID)
+	if err != nil {
+		return nil, annos, fmt.Errorf("failed to assign user %s to team %s: %w", userID, teamID, err)
+	}
+	grantObj := grant.NewGrant(
+		entitlement.Resource,
+		entitlementTeamMember,
+		principal.Id,
+		grant.WithGrantMetadata(map[string]interface{}{
+			"team_id": teamID,
+			"user_id": userID,
+			"message": resp.Message,
+		}),
+	)
+	return []*v2.Grant{grantObj}, annos, nil
+}
+
+// Revoke implements ResourceProvisionerV2 for entitlement provisioning (remove user from team).
+func (t *teamBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.Annotations, error) {
+	teamID := g.Entitlement.Resource.Id.Resource
+	userID := g.Principal.Id.Resource
+	_, annos, err := t.client.UnassignUserFromTeam(ctx, teamID, userID)
+	if err != nil {
+		return annos, fmt.Errorf("failed to unassign user %s from team %s: %w", userID, teamID, err)
+	}
+	return annos, nil
 }

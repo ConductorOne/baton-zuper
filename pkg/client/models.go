@@ -148,3 +148,19 @@ type TeamDetailsWithUsersResponse struct {
 		Users []ZuperUser `json:"users"`
 	} `json:"data"`
 }
+
+type AssignUserToTeamRequest struct {
+	TeamUID string `json:"team_uid"`
+	UserUID string `json:"user_uid"`
+}
+
+type AssignUserToTeamResponse struct {
+	Type    string `json:"type"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
+
+type UnassignUserFromTeamRequest struct {
+	TeamUID string `json:"team_uid"`
+	UserUID string `json:"user_uid"`
+}
