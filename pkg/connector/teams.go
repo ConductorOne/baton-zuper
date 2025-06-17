@@ -141,7 +141,7 @@ func newTeamBuilder(client *client.Client) *teamBuilder {
 	}
 }
 
-// Grant implements ResourceProvisionerV2 for entitlement provisioning assign user to team.
+// Grant assigns a user to a team as a member. Used for team membership provisioning.
 func (t *teamBuilder) Grant(ctx context.Context, principal *v2.Resource, entitlement *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
 	teamID := entitlement.Resource.Id.Resource
 	userID := principal.Id.Resource
@@ -162,7 +162,7 @@ func (t *teamBuilder) Grant(ctx context.Context, principal *v2.Resource, entitle
 	return []*v2.Grant{grantObj}, annos, nil
 }
 
-// Revoke implements ResourceProvisionerV2 for entitlement provisioning (remove user from team).
+// Revoke removes a user from a team as a member. Used for team membership deprovisioning.
 func (t *teamBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.Annotations, error) {
 	teamID := g.Entitlement.Resource.Id.Resource
 	userID := g.Principal.Id.Resource

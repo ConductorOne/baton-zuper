@@ -171,7 +171,23 @@ func (c *Client) GetTeamUsers(ctx context.Context, teamID string) ([]*ZuperUser,
 	return users, "", annos, nil
 }
 
-// AssignUserToTeam assigns a user to a team in Zuper.
+// UpdateUserRole updates the role of a user in Zuper by userUID and roleID (int). Used for role changes via the update user endpoint.
+func (c *Client) UpdateUserRole(ctx context.Context, userUID string, roleID int) (*UpdateUserRoleResponse, annotations.Annotations, error) {
+	payload := UpdateUserRoleRequest{}
+	payload.User.RoleID = roleID
+	url, err := buildResourceURL(c.apiUrl, userEndpoint, userUID, "update")
+	if err != nil {
+		return nil, nil, err
+	}
+	var resp UpdateUserRoleResponse
+	_, annos, err := c.doRequest(ctx, http.MethodPut, url, payload, &resp)
+	if err != nil {
+		return nil, annos, err
+	}
+	return &resp, annos, nil
+}
+
+// AssignUserToTeam assigns a user to a team in Zuper using the teamUID and userUID.
 func (c *Client) AssignUserToTeam(ctx context.Context, teamUID string, userUID string) (*AssignUserToTeamResponse, annotations.Annotations, error) {
 	payload := AssignUserToTeamRequest{
 		TeamUID: teamUID,
@@ -189,7 +205,7 @@ func (c *Client) AssignUserToTeam(ctx context.Context, teamUID string, userUID s
 	return &resp, annos, nil
 }
 
-// UnassignUserFromTeam desasigna un usuario de un team en Zuper.
+// UnassignUserFromTeam removes a user from a team in Zuper using the teamUID and userUID.
 func (c *Client) UnassignUserFromTeam(ctx context.Context, teamUID string, userUID string) (*AssignUserToTeamResponse, annotations.Annotations, error) {
 	payload := UnassignUserFromTeamRequest{
 		TeamUID: teamUID,

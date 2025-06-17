@@ -3,11 +3,13 @@ package connector
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
+	"github.com/conductorone/baton-sdk/pkg/types/grant"
 	"github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-zuper/pkg/client"
 )
@@ -83,10 +85,87 @@ func (r *roleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 	return []*v2.Entitlement{ent}, "", annos, nil
 }
 
-
 // Grants would assign roles to users. This is intentionally left empty as grants are handled by the userBuilder.
 func (r *roleBuilder) Grants(ctx context.Context, roleRes *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	return nil, "", nil, nil
+}
+
+// Grant assigns a role to a user if the user does not already have it. Used for role provisioning.
+func (r *roleBuilder) Grant(ctx context.Context, principal *v2.Resource, entitlement *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
+	userID := principal.Id.Resource
+	roleKey := entitlement.Resource.Id.Resource
+
+	var roleIDStr string
+	for _, definition := range roleDefinitions {
+		if definition.RoleKey == roleKey {
+			roleIDStr = definition.ID
+			break
+		}
+	}
+	if roleIDStr == "" {
+		return nil, nil, fmt.Errorf("role ID not found for key: %s", roleKey)
+	}
+	roleID, err := strconv.Atoi(roleIDStr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid role ID: %s", roleIDStr)
+	}
+
+	user, _, err := r.client.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user.Role != nil && user.Role.RoleUID == roleIDStr {
+		return nil, nil, nil
+	}
+
+	resp, annos, err := r.client.UpdateUserRole(ctx, userID, roleID)
+	if err != nil {
+		return nil, annos, fmt.Errorf("failed to update user role: %w", err)
+	}
+
+	grantObj := grant.NewGrant(
+		entitlement.Resource,
+		assignedEntitlement,
+		principal.Id,
+		grant.WithGrantMetadata(map[string]interface{}{
+			"message": resp.Message,
+		}),
+	)
+	return []*v2.Grant{grantObj}, annos, nil
+}
+
+// Revoke removes a role from a user and assigns the default role (Field Executive) if not already set. Used for role deprovisioning.
+func (r *roleBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.Annotations, error) {
+	userID := g.Principal.Id.Resource
+	roleKey := g.Entitlement.Resource.Id.Resource
+
+	var roleIDStr string
+	for _, def := range roleDefinitions {
+		if def.RoleKey == roleKey {
+			roleIDStr = def.ID
+			break
+		}
+	}
+	if roleIDStr == "" {
+		return nil, fmt.Errorf("role ID not found for key: %s", roleKey)
+	}
+
+	user, _, err := r.client.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// If the user already has the default role (3), do nothing
+	if user.Role.RoleKey == "FIELD_EXECUTIVE" {
+		return nil, nil
+	}
+
+	defaultRoleID := 3 // Field Executive
+	_, annos, err := r.client.UpdateUserRole(ctx, userID, defaultRoleID)
+	if err != nil {
+		return annos, fmt.Errorf("failed to set default role: %w", err)
+	}
+	return annos, nil
 }
 
 // newRoleBuilder creates a new instance of roleBuilder.
