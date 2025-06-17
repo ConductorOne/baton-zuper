@@ -21,9 +21,11 @@ const (
 
 // MockClient is a mock implementation of the Zuper client for testing.
 type MockClient struct {
-	GetUsersFunc    func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
-	GetUserByIDFunc func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
-	CreateUserFunc  func(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error)
+	GetUsersFunc     func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	GetUserByIDFunc  func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
+	CreateUserFunc   func(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error)
+	GetTeamsFunc     func(ctx context.Context, options client.PageOptions) ([]*client.Team, string, annotations.Annotations, error)
+	GetTeamUsersFunc func(ctx context.Context, teamID string) ([]*client.ZuperUser, string, annotations.Annotations, error)
 }
 
 // GetUsers calls the mock method if it is defined.
@@ -48,6 +50,22 @@ func (m *MockClient) GetUserByID(ctx context.Context, userUID string) (*client.Z
 		return m.GetUserByIDFunc(ctx, userUID)
 	}
 	return nil, nil, nil
+}
+
+// GetTeams calls the mock method if it is defined.
+func (m *MockClient) GetTeams(ctx context.Context, options client.PageOptions) ([]*client.Team, string, annotations.Annotations, error) {
+	if m.GetTeamsFunc != nil {
+		return m.GetTeamsFunc(ctx, options)
+	}
+	return nil, "", nil, nil
+}
+
+// GetTeamUsers calls the mock method if it is defined.
+func (m *MockClient) GetTeamUsers(ctx context.Context, teamID string) ([]*client.ZuperUser, string, annotations.Annotations, error) {
+	if m.GetTeamUsersFunc != nil {
+		return m.GetTeamUsersFunc(ctx, teamID)
+	}
+	return nil, "", nil, nil
 }
 
 // ReadFile loads content from a JSON file from /test/mock/.
@@ -83,6 +101,27 @@ func LoadMockJSON(fileName string) []byte {
 
 // LoadMockStruct loads a mock JSON file and unmarshals it into the provided interface.
 func LoadMockStruct(fileName string, v interface{}) {
+	data := LoadMockJSON(fileName)
+	if err := json.Unmarshal(data, v); err != nil {
+		panic(err)
+	}
+}
+
+// ReadTeamsFile loads content from a JSON file from /test/mock/ for teams.
+func ReadTeamsFile(fileName string) string {
+	_, filename, _, _ := runtime.Caller(0)
+	baseDir := filepath.Dir(filename)
+	fullPath := filepath.Join(baseDir, "mock", fileName)
+
+	data, err := os.ReadFile(fullPath)
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
+}
+
+// LoadMockTeamsStruct loads a mock JSON file and unmarshals it into the provided interface for teams.
+func LoadMockTeamsStruct(fileName string, v interface{}) {
 	data := LoadMockJSON(fileName)
 	if err := json.Unmarshal(data, v); err != nil {
 		panic(err)

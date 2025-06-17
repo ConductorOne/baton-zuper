@@ -153,7 +153,7 @@ func (c *Client) GetTeams(ctx context.Context, opts PageOptions) ([]*Team, strin
 }
 
 // GetTeamUsers fetches the users of a team from the Zuper API.
-func (c *Client) GetTeamUsers(ctx context.Context, teamID string, opts PageOptions) ([]*ZuperUser, string, annotations.Annotations, error) {
+func (c *Client) GetTeamUsers(ctx context.Context, teamID string) ([]*ZuperUser, string, annotations.Annotations, error) {
 	teamDetailsURL, err := buildResourceURL(c.apiUrl, teamEndpoint, teamID)
 	if err != nil {
 		return nil, "", nil, err

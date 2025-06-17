@@ -61,3 +61,36 @@ func TestUserBuilderList(t *testing.T) {
 
 	t.Logf("Users retrieved: %d, next token: %v", len(users), nextToken)
 }
+
+// TestGetTeams verifies that teams can be listed successfully from the Zuper API.
+func TestGetTeams(t *testing.T) {
+	ctx := context.Background()
+	c := initClient(t)
+
+	teams, nextPage, _, err := c.GetTeams(ctx, client.PageOptions{
+		PageSize:  client.DefaultPageSize,
+		PageToken: pageToken,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, teams)
+	t.Logf("Retrieved %d teams, next page token: %s", len(teams), nextPage)
+}
+
+// TestGetTeamUsers verifies that team users can be listed successfully from the Zuper API.
+func TestGetTeamUsers(t *testing.T) {
+	ctx := context.Background()
+	c := initClient(t)
+
+	// You may want to get a real team ID from the API or use a known one for your test environment.
+	teams, _, _, err := c.GetTeams(ctx, client.PageOptions{PageSize: 1})
+	if err != nil || len(teams) == 0 {
+		t.Skip("No teams available to test team users.")
+	}
+	teamID := teams[0].TeamUID
+
+	users, _, _, err := c.GetTeamUsers(ctx, teamID)
+	assert.NoError(t, err)
+	assert.NotNil(t, users)
+	t.Logf("Team %s has %d users", teamID, len(users))
+}

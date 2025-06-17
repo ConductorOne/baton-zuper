@@ -20,7 +20,7 @@ const (
 
 type teamsClientInterface interface {
 	GetTeams(ctx context.Context, options client.PageOptions) ([]*client.Team, string, annotations.Annotations, error)
-	GetTeamUsers(ctx context.Context, teamID string, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	GetTeamUsers(ctx context.Context, teamID string) ([]*client.ZuperUser, string, annotations.Annotations, error)
 }
 
 // teamBuilder is a builder for team resources.
@@ -103,7 +103,7 @@ func (t *teamBuilder) Entitlements(ctx context.Context, teamResource *v2.Resourc
 func (t *teamBuilder) Grants(ctx context.Context, teamResource *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
 	annos := annotations.Annotations{}
 	teamID := teamResource.Id.Resource
-	users, _, _, err := t.client.GetTeamUsers(ctx, teamID, client.PageOptions{})
+	users, _, _, err := t.client.GetTeamUsers(ctx, teamID)
 	if err != nil {
 		return nil, "", annos, fmt.Errorf("failed to get team users for %s: %w", teamID, err)
 	}
@@ -114,7 +114,6 @@ func (t *teamBuilder) Grants(ctx context.Context, teamResource *v2.Resource, _ *
 				ResourceType: userResourceType.Id,
 				Resource:     user.UserUID,
 			},
-			DisplayName: fmt.Sprintf("%s %s", user.FirstName, user.LastName),
 		}
 		grantObj := grant.NewGrant(
 			teamResource,
