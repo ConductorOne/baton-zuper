@@ -172,11 +172,14 @@ func (u *userBuilder) CreateAccount(
 		return nil, nil, nil, fmt.Errorf("failed to parse created user: %w", err)
 	}
 
-	plaintexts := []*v2.PlaintextData{{Bytes: []byte(generatedPassword)}}
+	passResult := &v2.PlaintextData{
+		Name:  "password",
+		Bytes: []byte(generatedPassword),
+	}
 
 	return &v2.CreateAccountResponse_SuccessResult{
 		Resource: userResource,
-	}, plaintexts, annos, nil
+	}, []*v2.PlaintextData{passResult}, annos, nil
 }
 
 // parseIntoUserResource converts a ZuperUser into a v2.Resource for Baton.

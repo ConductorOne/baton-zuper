@@ -1,0 +1,32 @@
+[
+  {
+    "team_uid": "team-1",
+    "team_name": "Team One",
+    "team_color": "#FF0000",
+    "team_description": "First team for testing",
+    "team_timezone": "UTC",
+    "user_count": 5,
+    "is_active": true,
+    "created_at": "2023-01-01T00:00:00.000Z",
+    "updated_at": "2023-06-01T00:00:00.000Z",
+    "created_by": {
+      "user_uid": "c3dea3e3-8bc3-459f-aaeb-04fd6f501fa5",
+      "first_name": "Ramon",
+      "last_name": "Mendoza",
+      "email": "Ramon.Mendoza@Powin.com",
+      "external_login_id": "",
+      "home_phone_number": "",
+      "designation": "Director of Field Operations",
+      "emp_code": "0098",
+      "prefix": "",
+      "work_phone_number": "",
+      "mobile_phone_number": "",
+      "profile_picture": "",
+      "hourly_labor_charge": "",
+      "is_active": true,
+      "is_deleted": false,
+      "created_at": "2022-12-16T16:32:47.000Z",
+      "updated_at": "2025-05-15T22:33:03.000Z"
+    }
+  }
+]

@@ -93,3 +93,58 @@ type AccessRole struct {
 	AccessRoleName  string `json:"role_name"`
 	RoleDescription string `json:"role_description"`
 }
+
+// Teams Models.
+type CreatedBy struct {
+	UserUID           string `json:"user_uid"`
+	FirstName         string `json:"first_name"`
+	LastName          string `json:"last_name"`
+	Email             string `json:"email"`
+	ExternalLoginID   string `json:"external_login_id"`
+	HomePhoneNumber   string `json:"home_phone_number"`
+	Designation       string `json:"designation"`
+	EmpCode           string `json:"emp_code"`
+	Prefix            string `json:"prefix"`
+	WorkPhoneNumber   string `json:"work_phone_number"`
+	MobilePhoneNumber string `json:"mobile_phone_number"`
+	ProfilePicture    string `json:"profile_picture"`
+	HourlyLaborCharge string `json:"hourly_labor_charge"`
+	IsActive          bool   `json:"is_active"`
+	IsDeleted         bool   `json:"is_deleted"`
+	CreatedAt         string `json:"created_at"`
+	UpdatedAt         string `json:"updated_at"`
+}
+
+type Team struct {
+	TeamUID         string    `json:"team_uid"`
+	TeamName        string    `json:"team_name"`
+	TeamColor       string    `json:"team_color"`
+	TeamDescription string    `json:"team_description"`
+	TeamTimezone    string    `json:"team_timezone"`
+	UserCount       int       `json:"user_count"`
+	IsActive        bool      `json:"is_active"`
+	CreatedAt       string    `json:"created_at"`
+	UpdatedAt       string    `json:"updated_at"`
+	CreatedBy       CreatedBy `json:"created_by"`
+}
+
+type TeamsResponse struct {
+	Type         string `json:"type"`
+	Data         []Team `json:"data"`
+	TotalRecords int    `json:"total_records"`
+	CurrentPage  int    `json:"current_page"`
+	TotalPages   int    `json:"total_pages"`
+}
+
+type TeamDetailsResponse struct {
+	Type string `json:"type"`
+	Data Team   `json:"data"`
+}
+
+type TeamDetailsWithUsersResponse struct {
+	Type string `json:"type"`
+	Data struct {
+		Team  Team        `json:"team"`
+		Users []ZuperUser `json:"users"`
+	} `json:"data"`
+}
