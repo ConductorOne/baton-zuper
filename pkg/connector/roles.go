@@ -155,9 +155,9 @@ func (r *roleBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.Anno
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// If the user already has the default role (3), do nothing
+	// Si el usuario ya tiene el rol por defecto (3), retornar GrantAlreadyRevoked
 	if user.Role.RoleKey == "FIELD_EXECUTIVE" {
-		return nil, nil
+		return annotations.New(&v2.GrantAlreadyRevoked{}), nil
 	}
 
 	defaultRoleID := 3 // Field Executive

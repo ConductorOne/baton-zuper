@@ -18,6 +18,7 @@ It also supports provisioning for:
 - Users
 - Assigning and unassigning users to teams
 - Updating a user's role
+- Update a User's Access Role
 
 ---
 

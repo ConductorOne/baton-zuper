@@ -29,6 +29,7 @@ type MockClient struct {
 	AssignUserToTeamFunc     func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
 	UnassignUserFromTeamFunc func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
 	UpdateUserRoleFunc       func(ctx context.Context, userUID string, roleID int) (*client.UpdateUserRoleResponse, annotations.Annotations, error)
+	UpdateUserAccessRoleFunc func(ctx context.Context, userUID string, accessRoleUID string) (*client.UpdateUserRoleResponse, annotations.Annotations, error)
 }
 
 // GetUsers calls the mock method if it is defined.
@@ -91,6 +92,15 @@ func (m *MockClient) UnassignUserFromTeam(ctx context.Context, teamUID, userUID 
 func (m *MockClient) UpdateUserRole(ctx context.Context, userUID string, roleID int) (*client.UpdateUserRoleResponse, annotations.Annotations, error) {
 	if m.UpdateUserRoleFunc != nil {
 		return m.UpdateUserRoleFunc(ctx, userUID, roleID)
+	}
+	return nil, nil, nil
+}
+
+// UpdateUserAccessRole calls the mock method if it is defined.
+
+func (m *MockClient) UpdateUserAccessRole(ctx context.Context, userUID string, accessRoleUID string) (*client.UpdateUserRoleResponse, annotations.Annotations, error) {
+	if m.UpdateUserAccessRoleFunc != nil {
+		return m.UpdateUserAccessRoleFunc(ctx, userUID, accessRoleUID)
 	}
 	return nil, nil, nil
 }

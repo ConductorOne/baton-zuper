@@ -23,7 +23,8 @@ Check out [Baton](https://github.com/conductorone/baton) to learn more the proje
 
    - Assign User To Team
    - Unassign User To Team
-   - Update a User's role
+   - Update a User's Role
+   - Update a User's Access Role
 
 ## Connector Credentials
 

@@ -180,3 +180,10 @@ type UpdateUserRoleRequest struct {
 		RoleID int `json:"role_id"`
 	} `json:"user"`
 }
+
+// UpdateUserAccessRoleRequest models.
+type UpdateUserAccessRoleRequest struct {
+	User struct {
+		AccessRole string `json:"access_role"`
+	} `json:"user"`
+}

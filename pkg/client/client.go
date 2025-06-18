@@ -171,10 +171,13 @@ func (c *Client) GetTeamUsers(ctx context.Context, teamID string) ([]*ZuperUser,
 	return users, "", annos, nil
 }
 
-// UpdateUserRole updates the role of a user in Zuper by userUID and roleID (int). Used for role changes via the update user endpoint.
-func (c *Client) UpdateUserRole(ctx context.Context, userUID string, roleID int) (*UpdateUserRoleResponse, annotations.Annotations, error) {
-	payload := UpdateUserRoleRequest{}
-	payload.User.RoleID = roleID
+// UpdateUserField updates a specific field of a user in Zuper.
+func (c *Client) UpdateUserField(ctx context.Context, userUID string, field string, value interface{}) (*UpdateUserRoleResponse, annotations.Annotations, error) {
+	payload := map[string]interface{}{
+		"user": map[string]interface{}{
+			field: value,
+		},
+	}
 	url, err := buildResourceURL(c.apiUrl, userEndpoint, userUID, "update")
 	if err != nil {
 		return nil, nil, err
@@ -185,6 +188,16 @@ func (c *Client) UpdateUserRole(ctx context.Context, userUID string, roleID int)
 		return nil, annos, err
 	}
 	return &resp, annos, nil
+}
+
+// UpdateUserRole updates the role of a user using UpdateUserField.
+func (c *Client) UpdateUserRole(ctx context.Context, userUID string, roleID int) (*UpdateUserRoleResponse, annotations.Annotations, error) {
+	return c.UpdateUserField(ctx, userUID, "role_id", roleID)
+}
+
+// UpdateUserAccessRole updates the access role of a user using UpdateUserField.
+func (c *Client) UpdateUserAccessRole(ctx context.Context, userUID string, accessRoleUID string) (*UpdateUserRoleResponse, annotations.Annotations, error) {
+	return c.UpdateUserField(ctx, userUID, "access_role", accessRoleUID)
 }
 
 // AssignUserToTeam assigns a user to a team in Zuper using the teamUID and userUID.
@@ -221,6 +234,20 @@ func (c *Client) UnassignUserFromTeam(ctx context.Context, teamUID string, userU
 		return nil, annos, err
 	}
 	return &resp, annos, nil
+}
+
+// IsUserInTeam checks if a user is already a member of a team.
+func (c *Client) IsUserInTeam(ctx context.Context, teamUID string, userUID string) (bool, error) {
+	users, _, _, err := c.GetTeamUsers(ctx, teamUID)
+	if err != nil {
+		return false, err
+	}
+	for _, user := range users {
+		if user.UserUID == userUID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // doRequest executes an HTTP request and decodes the response into the provided result.
