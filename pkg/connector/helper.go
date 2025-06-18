@@ -11,7 +11,6 @@ import (
 // assignedEntitlement is the standard entitlement name for assignments.
 const (
 	assignedEntitlement = "assigned"
-	symbols             = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 )
 
 // parsePageToken deserializes the Baton token and returns the Bag and page number for upstream.

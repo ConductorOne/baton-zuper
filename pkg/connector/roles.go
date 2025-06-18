@@ -115,7 +115,7 @@ func (r *roleBuilder) Grant(ctx context.Context, principal *v2.Resource, entitle
 		return nil, nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user.Role != nil && user.Role.RoleUID == roleIDStr {
-		return nil, nil, nil
+		return nil, annotations.New(&v2.GrantAlreadyExists{}), nil
 	}
 
 	resp, annos, err := r.client.UpdateUserRole(ctx, userID, roleID)

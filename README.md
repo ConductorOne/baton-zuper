@@ -6,6 +6,36 @@
 
 Check out [Baton](https://github.com/conductorone/baton) to learn more the project in general.
 
+## Connector Capabilities
+
+1. **Resources synced**:
+
+   - Users
+   - Teams
+   - Roles
+   - Access Roles
+
+2. **Account provisioning**
+
+   - Users
+
+3. **Entitlement provisioning**
+
+   - Assign User To Team
+   - Unassign User To Team
+   - Update a User's role
+
+## Connector Credentials
+
+1. **API URL**
+2. **API KEY**
+
+### Obtaining Credentials
+
+1. Log in to [Zuper Pro](https://staging.zuperpro.com/login).
+2. Navigate to **Settings** → **Account Settings** → **API Keys**.
+3. Click on **New API Key**, enter a name for your key, and click **Generate**. The API key will be displayed—make sure to copy and save it securely, as it may not be shown again.
+
 # Getting Started
 
 ## brew
@@ -37,7 +67,11 @@ baton resources
 # Data Model
 
 `baton-zuper` will pull down information about the following resources:
+
 - Users
+- Teams
+- Roles
+- Access Roles
 
 # Contributing, Support and Issues
 
@@ -63,6 +97,8 @@ Available Commands:
   help               Help about any command
 
 Flags:
+      --api-url   string             the API URL provided by Zuper
+      --api-key   string             the API key generated in Zuper
       --client-id string             The client ID used to authenticate with ConductorOne ($BATON_CLIENT_ID)
       --client-secret string         The client secret used to authenticate with ConductorOne ($BATON_CLIENT_SECRET)
   -f, --file string                  The path to the c1z file to sync with ($BATON_FILE) (default "sync.c1z")

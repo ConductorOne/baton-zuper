@@ -156,3 +156,109 @@ func TestTeamBuilder_Grants_Error(t *testing.T) {
 	assert.Nil(t, grants)
 	assert.Equal(t, 0, len(annos))
 }
+
+// TestTeamBuilder_Grant tests the Grant method of teamBuilder for assigning a user to a team.
+func TestTeamBuilder_Grant(t *testing.T) {
+	mockCli := &test.MockClient{
+		AssignUserToTeamFunc: func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+			return &client.AssignUserToTeamResponse{Message: "User assigned to team"}, nil, nil
+		},
+	}
+	builder := &teamBuilder{
+		resourceType: teamResourceType,
+		client:       mockCli,
+	}
+	teamRes := &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: teamResourceType.Id,
+			Resource:     "team-1",
+		},
+		DisplayName: "Team One",
+	}
+	userRes := &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: userResourceType.Id,
+			Resource:     "user-1",
+		},
+	}
+	ent := &v2.Entitlement{
+		Resource: teamRes,
+	}
+	grants, annos, err := builder.Grant(context.Background(), userRes, ent)
+	assert.NoError(t, err)
+	assert.NotNil(t, grants)
+	assert.Equal(t, 0, len(annos))
+}
+
+// TestTeamBuilder_Grant_Error tests error handling in Grant method of teamBuilder.
+func TestTeamBuilder_Grant_Error(t *testing.T) {
+	mockCli := &test.MockClient{
+		AssignUserToTeamFunc: func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+			return nil, nil, errors.New("mock assign error")
+		},
+	}
+	builder := &teamBuilder{
+		resourceType: teamResourceType,
+		client:       mockCli,
+	}
+	teamRes := &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: teamResourceType.Id,
+			Resource:     "team-1",
+		},
+		DisplayName: "Team One",
+	}
+	userRes := &v2.Resource{
+		Id: &v2.ResourceId{
+			ResourceType: userResourceType.Id,
+			Resource:     "user-1",
+		},
+	}
+	ent := &v2.Entitlement{
+		Resource: teamRes,
+	}
+	grants, annos, err := builder.Grant(context.Background(), userRes, ent)
+	assert.Error(t, err)
+	assert.Nil(t, grants)
+	assert.Nil(t, annos)
+}
+
+// TestTeamBuilder_Revoke tests the Revoke method of teamBuilder for unassigning a user from a team.
+func TestTeamBuilder_Revoke(t *testing.T) {
+	mockCli := &test.MockClient{
+		UnassignUserFromTeamFunc: func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+			return &client.AssignUserToTeamResponse{Message: "User unassigned from team"}, nil, nil
+		},
+	}
+	builder := &teamBuilder{
+		resourceType: teamResourceType,
+		client:       mockCli,
+	}
+	grant := &v2.Grant{
+		Principal:   &v2.Resource{Id: &v2.ResourceId{ResourceType: userResourceType.Id, Resource: "user-1"}},
+		Entitlement: &v2.Entitlement{Resource: &v2.Resource{Id: &v2.ResourceId{ResourceType: teamResourceType.Id, Resource: "team-1"}}},
+	}
+	annos, err := builder.Revoke(context.Background(), grant)
+	assert.NoError(t, err)
+	assert.Nil(t, annos)
+}
+
+// TestTeamBuilder_Revoke_Error tests error handling in Revoke method of teamBuilder.
+func TestTeamBuilder_Revoke_Error(t *testing.T) {
+	mockCli := &test.MockClient{
+		UnassignUserFromTeamFunc: func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+			return nil, nil, errors.New("mock unassign error")
+		},
+	}
+	builder := &teamBuilder{
+		resourceType: teamResourceType,
+		client:       mockCli,
+	}
+	grant := &v2.Grant{
+		Principal:   &v2.Resource{Id: &v2.ResourceId{ResourceType: userResourceType.Id, Resource: "user-1"}},
+		Entitlement: &v2.Entitlement{Resource: &v2.Resource{Id: &v2.ResourceId{ResourceType: teamResourceType.Id, Resource: "team-1"}}},
+	}
+	annos, err := builder.Revoke(context.Background(), grant)
+	assert.Error(t, err)
+	assert.Nil(t, annos)
+}
