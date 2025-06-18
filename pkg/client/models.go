@@ -94,7 +94,7 @@ type AccessRole struct {
 	RoleDescription string `json:"role_description"`
 }
 
-// Teams Models.
+// CreateUser models.
 type CreatedBy struct {
 	UserUID           string `json:"user_uid"`
 	FirstName         string `json:"first_name"`
@@ -115,6 +115,7 @@ type CreatedBy struct {
 	UpdatedAt         string `json:"updated_at"`
 }
 
+// Teams Models.
 type Team struct {
 	TeamUID         string    `json:"team_uid"`
 	TeamName        string    `json:"team_name"`
@@ -147,4 +148,42 @@ type TeamDetailsWithUsersResponse struct {
 		Team  Team        `json:"team"`
 		Users []ZuperUser `json:"users"`
 	} `json:"data"`
+}
+
+// AssignUserToTeam models.
+type AssignUserToTeamRequest struct {
+	TeamUID string `json:"team_uid"`
+	UserUID string `json:"user_uid"`
+}
+
+type AssignUserToTeamResponse struct {
+	Type    string `json:"type"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
+
+// UnassignUserFromTeam models.
+type UnassignUserFromTeamRequest struct {
+	TeamUID string `json:"team_uid"`
+	UserUID string `json:"user_uid"`
+}
+
+// UpdateUserRole models.
+type UpdateUserRoleResponse struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+	Title   string `json:"title,omitempty"`
+}
+
+type UpdateUserRoleRequest struct {
+	User struct {
+		RoleID int `json:"role_id"`
+	} `json:"user"`
+}
+
+// UpdateUserAccessRoleRequest models.
+type UpdateUserAccessRoleRequest struct {
+	User struct {
+		AccessRole string `json:"access_role"`
+	} `json:"user"`
 }

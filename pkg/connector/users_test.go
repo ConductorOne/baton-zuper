@@ -72,6 +72,12 @@ func TestUserBuilder_List(t *testing.T) {
 				CreateUserFunc: func(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error) {
 					return &client.CreateUserResponse{}, nil, nil
 				},
+				UpdateUserRoleFunc: func(ctx context.Context, userUID string, roleID int) (*client.UpdateUserRoleResponse, annotations.Annotations, error) {
+					return &client.UpdateUserRoleResponse{}, nil, nil
+				},
+				UpdateUserAccessRoleFunc: func(ctx context.Context, userUID string, accessRoleUID string) (*client.UpdateUserRoleResponse, annotations.Annotations, error) {
+					return &client.UpdateUserRoleResponse{}, nil, nil
+				},
 			}
 
 			builder := &userBuilder{

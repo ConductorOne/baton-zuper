@@ -21,6 +21,8 @@ const (
 type teamsClientInterface interface {
 	GetTeams(ctx context.Context, options client.PageOptions) ([]*client.Team, string, annotations.Annotations, error)
 	GetTeamUsers(ctx context.Context, teamID string) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	AssignUserToTeam(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
+	UnassignUserFromTeam(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
 }
 
 // teamBuilder is a builder for team resources.
@@ -137,4 +139,60 @@ func newTeamBuilder(client *client.Client) *teamBuilder {
 		resourceType: teamResourceType,
 		client:       client,
 	}
+}
+
+// Grant assigns a user to a team as a member. Used for team membership provisioning.
+func (t *teamBuilder) Grant(ctx context.Context, principal *v2.Resource, entitlement *v2.Entitlement) ([]*v2.Grant, annotations.Annotations, error) {
+	teamID := entitlement.Resource.Id.Resource
+	userID := principal.Id.Resource
+
+	// Validate if the user is already a member of the team.
+	if client, ok := t.client.(*client.Client); ok {
+		inTeam, err := client.IsUserInTeam(ctx, teamID, userID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to check if user is in team: %w", err)
+		}
+		if inTeam {
+			return nil, annotations.New(&v2.GrantAlreadyExists{}), nil
+		}
+	}
+
+	resp, annos, err := t.client.AssignUserToTeam(ctx, teamID, userID)
+	if err != nil {
+		return nil, annos, fmt.Errorf("failed to assign user %s to team %s: %w", userID, teamID, err)
+	}
+	grantObj := grant.NewGrant(
+		entitlement.Resource,
+		entitlementTeamMember,
+		principal.Id,
+		grant.WithGrantMetadata(map[string]interface{}{
+			"team_id": teamID,
+			"user_id": userID,
+			"message": resp.Message,
+		}),
+	)
+	return []*v2.Grant{grantObj}, annos, nil
+}
+
+// Revoke removes a user from a team as a member. Used for team membership deprovisioning.
+func (t *teamBuilder) Revoke(ctx context.Context, g *v2.Grant) (annotations.Annotations, error) {
+	teamID := g.Entitlement.Resource.Id.Resource
+	userID := g.Principal.Id.Resource
+
+	// Validar si el usuario está en el equipo antes de intentar removerlo
+	if client, ok := t.client.(*client.Client); ok {
+		inTeam, err := client.IsUserInTeam(ctx, teamID, userID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if user is in team: %w", err)
+		}
+		if !inTeam {
+			return annotations.New(&v2.GrantAlreadyRevoked{}), nil
+		}
+	}
+
+	_, annos, err := t.client.UnassignUserFromTeam(ctx, teamID, userID)
+	if err != nil {
+		return annos, fmt.Errorf("failed to unassign user %s from team %s: %w", userID, teamID, err)
+	}
+	return annos, nil
 }

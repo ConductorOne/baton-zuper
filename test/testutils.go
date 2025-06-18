@@ -21,11 +21,15 @@ const (
 
 // MockClient is a mock implementation of the Zuper client for testing.
 type MockClient struct {
-	GetUsersFunc     func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
-	GetUserByIDFunc  func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
-	CreateUserFunc   func(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error)
-	GetTeamsFunc     func(ctx context.Context, options client.PageOptions) ([]*client.Team, string, annotations.Annotations, error)
-	GetTeamUsersFunc func(ctx context.Context, teamID string) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	GetUsersFunc             func(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	GetUserByIDFunc          func(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
+	CreateUserFunc           func(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error)
+	GetTeamsFunc             func(ctx context.Context, options client.PageOptions) ([]*client.Team, string, annotations.Annotations, error)
+	GetTeamUsersFunc         func(ctx context.Context, teamID string) ([]*client.ZuperUser, string, annotations.Annotations, error)
+	AssignUserToTeamFunc     func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
+	UnassignUserFromTeamFunc func(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error)
+	UpdateUserRoleFunc       func(ctx context.Context, userUID string, roleID int) (*client.UpdateUserRoleResponse, annotations.Annotations, error)
+	UpdateUserAccessRoleFunc func(ctx context.Context, userUID string, accessRoleUID string) (*client.UpdateUserRoleResponse, annotations.Annotations, error)
 }
 
 // GetUsers calls the mock method if it is defined.
@@ -66,6 +70,39 @@ func (m *MockClient) GetTeamUsers(ctx context.Context, teamID string) ([]*client
 		return m.GetTeamUsersFunc(ctx, teamID)
 	}
 	return nil, "", nil, nil
+}
+
+// AssignUserToTeam calls the mock method if it is defined.
+func (m *MockClient) AssignUserToTeam(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+	if m.AssignUserToTeamFunc != nil {
+		return m.AssignUserToTeamFunc(ctx, teamUID, userUID)
+	}
+	return nil, nil, nil
+}
+
+// UnassignUserFromTeam calls the mock method if it is defined.
+func (m *MockClient) UnassignUserFromTeam(ctx context.Context, teamUID, userUID string) (*client.AssignUserToTeamResponse, annotations.Annotations, error) {
+	if m.UnassignUserFromTeamFunc != nil {
+		return m.UnassignUserFromTeamFunc(ctx, teamUID, userUID)
+	}
+	return nil, nil, nil
+}
+
+// UpdateUserRole calls the mock method if it is defined.
+func (m *MockClient) UpdateUserRole(ctx context.Context, userUID string, roleID int) (*client.UpdateUserRoleResponse, annotations.Annotations, error) {
+	if m.UpdateUserRoleFunc != nil {
+		return m.UpdateUserRoleFunc(ctx, userUID, roleID)
+	}
+	return nil, nil, nil
+}
+
+// UpdateUserAccessRole calls the mock method if it is defined.
+
+func (m *MockClient) UpdateUserAccessRole(ctx context.Context, userUID string, accessRoleUID string) (*client.UpdateUserRoleResponse, annotations.Annotations, error) {
+	if m.UpdateUserAccessRoleFunc != nil {
+		return m.UpdateUserAccessRoleFunc(ctx, userUID, accessRoleUID)
+	}
+	return nil, nil, nil
 }
 
 // ReadFile loads content from a JSON file from /test/mock/.

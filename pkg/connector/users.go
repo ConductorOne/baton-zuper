@@ -18,6 +18,7 @@ type UserClient interface {
 	GetUsers(ctx context.Context, options client.PageOptions) ([]*client.ZuperUser, string, annotations.Annotations, error)
 	GetUserByID(ctx context.Context, userUID string) (*client.ZuperUser, annotations.Annotations, error)
 	CreateUser(ctx context.Context, user client.UserPayload) (*client.CreateUserResponse, annotations.Annotations, error)
+	UpdateUserAccessRole(ctx context.Context, userUID string, accessRoleUID string) (*client.UpdateUserRoleResponse, annotations.Annotations, error)
 }
 
 type userBuilder struct {
