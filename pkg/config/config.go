@@ -1,30 +1,32 @@
-package main
+package config
 
 import (
 	"github.com/conductorone/baton-sdk/pkg/field"
-	"github.com/spf13/viper"
 )
 
 var (
 	apiUrlField = field.StringField(
 		"api-url",
+		field.WithDisplayName("API URL"),
 		field.WithDescription("The URL of the API."),
 		field.WithRequired(true),
 	)
 	apiKeyField = field.StringField(
 		"api-key",
+		field.WithDisplayName("API key"),
 		field.WithDescription("API key for authenticating requests to Zuper."),
+		field.WithIsSecret(true),
 		field.WithRequired(true),
 	)
-
-	ConfigurationFields = []field.SchemaField{
-		apiUrlField,
-		apiKeyField,
-	}
-
-	FieldRelationships = []field.SchemaFieldRelationship{}
 )
 
-func ValidateConfig(v *viper.Viper) error {
-	return nil
-}
+//go:generate go run ./gen
+var Config = field.NewConfiguration(
+	[]field.SchemaField{
+		apiUrlField,
+		apiKeyField,
+	},
+	field.WithConnectorDisplayName("Zuper"),
+	field.WithHelpUrl("/docs/baton/zuper"),
+	field.WithIconUrl("/static/app-icons/zuper.svg"),
+)
