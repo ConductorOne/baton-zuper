@@ -7,7 +7,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.23.x
+          go-version-file: go.mod
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run linters
@@ -18,7 +18,7 @@ jobs:
   go-test:
     strategy:
       matrix:
-        go-version: [1.23.x]
+        go-version: [1.25.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     env:
@@ -28,8 +28,8 @@ jobs:
       - name: Install Go
         if: success()
         uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
+        with: 
+           go-version-file: go.mod
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run go tests
@@ -50,7 +50,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.23.x
+          go-version-file: go.mod
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build baton-zuper
