@@ -31,7 +31,7 @@ func parsePageToken(i string, resourceID *v2.ResourceId) (*pagination.Bag, strin
 }
 
 // generateCredentials generates a random password based on the credential options.
-func generateCredentials(credentialOptions *v2.CredentialOptions) (string, error) {
+func generateCredentials(credentialOptions *v2.LocalCredentialOptions) (string, error) {
 	if credentialOptions == nil || credentialOptions.GetRandomPassword() == nil {
 		return "", errors.New("unsupported credential option: only random password is supported")
 	}
@@ -42,7 +42,7 @@ func generateCredentials(credentialOptions *v2.CredentialOptions) (string, error
 	}
 
 	password, err := crypto.GenerateRandomPassword(
-		&v2.CredentialOptions_RandomPassword{
+		&v2.LocalCredentialOptions_RandomPassword{
 			Length: length,
 		},
 	)
