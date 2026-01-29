@@ -6,10 +6,9 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
-	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
-	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-zuper/pkg/client"
 )
 
@@ -47,34 +46,35 @@ func parseIntoTeamResource(team *client.Team) (*v2.Resource, error) {
 		"created_at":       team.CreatedAt,
 		"updated_at":       team.UpdatedAt,
 	}
-	return resource.NewGroupResource(
+	return rs.NewGroupResource(
 		team.TeamName,
 		teamResourceType,
 		team.TeamUID,
-		[]resource.GroupTraitOption{
-			resource.WithGroupProfile(profile),
+		[]rs.GroupTraitOption{
+			rs.WithGroupProfile(profile),
 		},
 	)
 }
 
 // List returns the teams as Baton resources, with pagination.
-func (t *teamBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
+func (t *teamBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, attrs rs.SyncOpAttrs) ([]*v2.Resource, *rs.SyncOpResults, error) {
 	var resources []*v2.Resource
+	pToken := attrs.PageToken
 	bag, pageToken, err := parsePageToken(pToken.Token, &v2.ResourceId{ResourceType: teamResourceType.Id})
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
 	}
 	teams, nextPageToken, annos, err := t.client.GetTeams(ctx, client.PageOptions{
 		PageSize:  pToken.Size,
 		PageToken: pageToken,
 	})
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, err
 	}
 	for _, team := range teams {
 		teamResource, err := parseIntoTeamResource(team)
 		if err != nil {
-			return nil, "", nil, err
+			return nil, nil, err
 		}
 		resources = append(resources, teamResource)
 	}
@@ -82,14 +82,14 @@ func (t *teamBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 	if nextPageToken != "" {
 		outToken, err = bag.NextToken(nextPageToken)
 		if err != nil {
-			return nil, "", nil, err
+			return nil, nil, err
 		}
 	}
-	return resources, outToken, annos, nil
+	return resources, &rs.SyncOpResults{NextPageToken: outToken, Annotations: annos}, nil
 }
 
 // Entitlements returns a "member" entitlement for each team, grantable to users.
-func (t *teamBuilder) Entitlements(ctx context.Context, teamResource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+func (t *teamBuilder) Entitlements(ctx context.Context, teamResource *v2.Resource, attrs rs.SyncOpAttrs) ([]*v2.Entitlement, *rs.SyncOpResults, error) {
 	annos := annotations.Annotations{}
 	ent := entitlement.NewAssignmentEntitlement(
 		teamResource,
@@ -98,16 +98,16 @@ func (t *teamBuilder) Entitlements(ctx context.Context, teamResource *v2.Resourc
 		entitlement.WithDisplayName(fmt.Sprintf("Member of %s", teamResource.DisplayName)),
 		entitlement.WithDescription(fmt.Sprintf("Member of team %s", teamResource.DisplayName)),
 	)
-	return []*v2.Entitlement{ent}, "", annos, nil
+	return []*v2.Entitlement{ent}, &rs.SyncOpResults{Annotations: annos}, nil
 }
 
 // Grants returns grants for the "member" entitlement for each user in the team.
-func (t *teamBuilder) Grants(ctx context.Context, teamResource *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
+func (t *teamBuilder) Grants(ctx context.Context, teamResource *v2.Resource, attrs rs.SyncOpAttrs) ([]*v2.Grant, *rs.SyncOpResults, error) {
 	annos := annotations.Annotations{}
 	teamID := teamResource.Id.Resource
 	users, _, _, err := t.client.GetTeamUsers(ctx, teamID)
 	if err != nil {
-		return nil, "", annos, fmt.Errorf("failed to get team users for %s: %w", teamID, err)
+		return nil, nil, fmt.Errorf("failed to get team users for %s: %w", teamID, err)
 	}
 	var grants []*v2.Grant
 	for _, user := range users {
@@ -130,7 +130,7 @@ func (t *teamBuilder) Grants(ctx context.Context, teamResource *v2.Resource, _ *
 		)
 		grants = append(grants, grantObj)
 	}
-	return grants, "", annos, nil
+	return grants, &rs.SyncOpResults{Annotations: annos}, nil
 }
 
 // newTeamBuilder creates a new instance of teamBuilder.

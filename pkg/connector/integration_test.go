@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/conductorone/baton-sdk/pkg/pagination"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/conductorone/baton-zuper/pkg/client"
 	"github.com/stretchr/testify/assert"
@@ -51,15 +53,16 @@ func TestGetUsers(t *testing.T) {
 // It checks that the returned list is not nil and logs the number of users and pagination token.
 func TestUserBuilderList(t *testing.T) {
 	ctx := context.Background()
-	client := initClient(t)
+	c := initClient(t)
 
-	ub := newUserBuilder(client)
-	users, nextToken, _, err := ub.List(ctx, nil, nil)
+	ub := newUserBuilder(c)
+	attrs := rs.SyncOpAttrs{PageToken: pagination.Token{Token: "", Size: client.DefaultPageSize}}
+	users, results, err := ub.List(ctx, nil, attrs)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, users)
 
-	t.Logf("Users retrieved: %d, next token: %v", len(users), nextToken)
+	t.Logf("Users retrieved: %d, next token: %v", len(users), results.NextPageToken)
 }
 
 // TestGetTeams verifies that teams can be listed successfully from the Zuper API.

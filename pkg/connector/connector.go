@@ -7,9 +7,11 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
+	"github.com/conductorone/baton-sdk/pkg/cli"
 	"github.com/conductorone/baton-sdk/pkg/connectorbuilder"
 	"github.com/conductorone/baton-sdk/pkg/uhttp"
 	"github.com/conductorone/baton-zuper/pkg/client"
+	cfg "github.com/conductorone/baton-zuper/pkg/config"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
 	"go.uber.org/zap"
 )
@@ -19,8 +21,8 @@ type Connector struct {
 }
 
 // ResourceSyncers returns a ResourceSyncer for each resource type that should be synced from the upstream service.
-func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncer {
-	return []connectorbuilder.ResourceSyncer{
+func (d *Connector) ResourceSyncers(ctx context.Context) []connectorbuilder.ResourceSyncerV2 {
+	return []connectorbuilder.ResourceSyncerV2{
 		newUserBuilder(d.client),
 		newRoleBuilder(d.client),
 		newAccessRoleBuilder(d.client),
@@ -93,15 +95,15 @@ func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, erro
 }
 
 // New returns a new instance of the connector.
-func New(ctx context.Context, apiUrl string, token string) (*Connector, error) {
+func New(ctx context.Context, cc *cfg.Zuper, opts *cli.ConnectorOpts) (connectorbuilder.ConnectorBuilderV2, []connectorbuilder.Opt, error) {
 	l := ctxzap.Extract(ctx)
 	httpClient := uhttp.NewBaseHttpClient(&http.Client{})
-	zuperClient, err := client.New(ctx, client.NewClient(ctx, apiUrl, token, httpClient))
+	zuperClient, err := client.New(ctx, client.NewClient(ctx, cc.ApiUrl, cc.ApiKey, httpClient))
 	if err != nil {
 		l.Error("error creating Zuper client", zap.Error(err))
-		return nil, err
+		return nil, nil, err
 	}
 	return &Connector{
 		client: zuperClient,
-	}, nil
+	}, nil, nil
 }
