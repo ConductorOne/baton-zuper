@@ -1,6 +1,6 @@
 ![Baton Logo](./baton-logo.png)
 
-# `baton-zuper` [![Go Reference](https://pkg.go.dev/badge/github.com/conductorone/baton-zuper.svg)](https://pkg.go.dev/github.com/conductorone/baton-zuper) ![main ci](https://github.com/conductorone/baton-zuper/actions/workflows/main.yaml/badge.svg)
+# `baton-zuper` [![Go Reference](https://pkg.go.dev/badge/github.com/conductorone/baton-zuper.svg)](https://pkg.go.dev/github.com/conductorone/baton-zuper) ![ci](https://github.com/conductorone/baton-zuper/actions/workflows/ci.yaml/badge.svg) ![verify](https://github.com/conductorone/baton-zuper/actions/workflows/verify.yaml/badge.svg)
 
 `baton-zuper` is a connector for built using the [Baton SDK](https://github.com/conductorone/baton-sdk).
 
