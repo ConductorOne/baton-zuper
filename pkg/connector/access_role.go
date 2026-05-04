@@ -8,10 +8,9 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
-	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
-	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-zuper/pkg/client"
 )
 
@@ -87,12 +86,12 @@ func (b *accessRoleBuilder) ResourceType(_ context.Context) *v2.ResourceType {
 }
 
 // List returns all access roles as individual resources, simulating pagination.
-func (b *accessRoleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
+func (b *accessRoleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, attrs rs.SyncOpAttrs) ([]*v2.Resource, *rs.SyncOpResults, error) {
 	annos := annotations.Annotations{}
 
 	err := b.loadAccessRoles(ctx)
 	if err != nil {
-		return nil, "", annos, err
+		return nil, nil, err
 	}
 
 	var resources []*v2.Resource
@@ -101,23 +100,23 @@ func (b *accessRoleBuilder) List(ctx context.Context, parentResourceID *v2.Resou
 			"AccessRoleUID":   role.AccessRoleUID,
 			"RoleDescription": role.RoleDescription,
 		}
-		accessRoleResource, err := resource.NewRoleResource(
+		accessRoleResource, err := rs.NewRoleResource(
 			role.AccessRoleName,
 			b.resourceType,
 			uid,
-			[]resource.RoleTraitOption{resource.WithRoleProfile(profile)},
+			[]rs.RoleTraitOption{rs.WithRoleProfile(profile)},
 		)
 		if err != nil {
-			return nil, "", annos, fmt.Errorf("failed to create access role resource: %w", err)
+			return nil, nil, fmt.Errorf("failed to create access role resource: %w", err)
 		}
 		resources = append(resources, accessRoleResource)
 	}
 
-	return resources, "", annos, nil
+	return resources, &rs.SyncOpResults{Annotations: annos}, nil
 }
 
 // Entitlements returns an 'assigned' entitlement for the given access role resource.
-func (b *accessRoleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, pToken *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+func (b *accessRoleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, attrs rs.SyncOpAttrs) ([]*v2.Entitlement, *rs.SyncOpResults, error) {
 	annos := annotations.Annotations{}
 	name := resource.DisplayName
 	assigmentOptions := []entitlement.EntitlementOption{
@@ -128,12 +127,12 @@ func (b *accessRoleBuilder) Entitlements(ctx context.Context, resource *v2.Resou
 	entitlements := []*v2.Entitlement{
 		entitlement.NewAssignmentEntitlement(resource, assignedEntitlement, assigmentOptions...),
 	}
-	return entitlements, "", annos, nil
+	return entitlements, &rs.SyncOpResults{Annotations: annos}, nil
 }
 
 // Grants would assign access roles to users. This is intentionally left empty as grants are handled by the userBuilder.
-func (b *accessRoleBuilder) Grants(ctx context.Context, resourceUser *v2.Resource, pToken *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+func (b *accessRoleBuilder) Grants(ctx context.Context, resourceUser *v2.Resource, attrs rs.SyncOpAttrs) ([]*v2.Grant, *rs.SyncOpResults, error) {
+	return nil, nil, nil
 }
 
 // Grant assigns an access role to a user if the user does not already have it. Used for access role provisioning.

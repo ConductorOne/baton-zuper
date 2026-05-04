@@ -7,10 +7,9 @@ import (
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
-	"github.com/conductorone/baton-sdk/pkg/pagination"
 	"github.com/conductorone/baton-sdk/pkg/types/entitlement"
 	"github.com/conductorone/baton-sdk/pkg/types/grant"
-	"github.com/conductorone/baton-sdk/pkg/types/resource"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-zuper/pkg/client"
 )
 
@@ -41,7 +40,7 @@ func (r *roleBuilder) ResourceType(ctx context.Context) *v2.ResourceType {
 }
 
 // List returns all defined roles as individual resources, simulating pagination.
-func (r *roleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, pToken *pagination.Token) ([]*v2.Resource, string, annotations.Annotations, error) {
+func (r *roleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId, attrs rs.SyncOpAttrs) ([]*v2.Resource, *rs.SyncOpResults, error) {
 	annos := annotations.Annotations{}
 
 	var resources []*v2.Resource
@@ -52,22 +51,22 @@ func (r *roleBuilder) List(ctx context.Context, parentResourceID *v2.ResourceId,
 			"role_display":     role.DisplayName,
 			"role_description": role.Description,
 		}
-		roleResource, err := resource.NewRoleResource(
+		roleResource, err := rs.NewRoleResource(
 			role.DisplayName,
 			r.resourceType,
 			role.RoleKey,
-			[]resource.RoleTraitOption{resource.WithRoleProfile(profile)},
+			[]rs.RoleTraitOption{rs.WithRoleProfile(profile)},
 		)
 		if err != nil {
-			return nil, "", annos, fmt.Errorf("failed to create role resource: %w", err)
+			return nil, nil, fmt.Errorf("failed to create role resource: %w", err)
 		}
 		resources = append(resources, roleResource)
 	}
-	return resources, "", annos, nil
+	return resources, &rs.SyncOpResults{Annotations: annos}, nil
 }
 
 // Entitlements returns an 'assigned' entitlement for the given role resource.
-func (r *roleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ *pagination.Token) ([]*v2.Entitlement, string, annotations.Annotations, error) {
+func (r *roleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _ rs.SyncOpAttrs) ([]*v2.Entitlement, *rs.SyncOpResults, error) {
 	annos := annotations.Annotations{}
 
 	assigmentOptions := []entitlement.EntitlementOption{
@@ -82,12 +81,12 @@ func (r *roleBuilder) Entitlements(ctx context.Context, resource *v2.Resource, _
 		assigmentOptions...,
 	)
 
-	return []*v2.Entitlement{ent}, "", annos, nil
+	return []*v2.Entitlement{ent}, &rs.SyncOpResults{Annotations: annos}, nil
 }
 
 // Grants would assign roles to users. This is intentionally left empty as grants are handled by the userBuilder.
-func (r *roleBuilder) Grants(ctx context.Context, roleRes *v2.Resource, _ *pagination.Token) ([]*v2.Grant, string, annotations.Annotations, error) {
-	return nil, "", nil, nil
+func (r *roleBuilder) Grants(ctx context.Context, roleRes *v2.Resource, _ rs.SyncOpAttrs) ([]*v2.Grant, *rs.SyncOpResults, error) {
+	return nil, nil, nil
 }
 
 // Grant assigns a role to a user if the user does not already have it. Used for role provisioning.

@@ -9,6 +9,7 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-zuper/pkg/client"
 	"github.com/conductorone/baton-zuper/test"
 	"github.com/stretchr/testify/assert"
@@ -85,7 +86,8 @@ func TestUserBuilder_List(t *testing.T) {
 				client:       mockCli,
 			}
 
-			resources, nextPage, gotAnnos, err := builder.List(context.Background(), nil, &pagination.Token{Token: ""})
+			attrs := rs.SyncOpAttrs{PageToken: pagination.Token{Token: "", Size: client.DefaultPageSize}}
+			resources, results, err := builder.List(context.Background(), nil, attrs)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -101,8 +103,8 @@ func TestUserBuilder_List(t *testing.T) {
 			}
 
 			require.NotEmpty(t, resources)
-			assert.Equal(t, tt.nextToken, nextPage)
-			assert.Equal(t, len(annos), len(gotAnnos))
+			assert.Equal(t, tt.nextToken, results.NextPageToken)
+			assert.Equal(t, len(annos), len(results.Annotations))
 
 			for i, r := range resources {
 				expected := mockUsers[i]

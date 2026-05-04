@@ -9,6 +9,7 @@ import (
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
 	"github.com/conductorone/baton-sdk/pkg/pagination"
+	rs "github.com/conductorone/baton-sdk/pkg/types/resource"
 	"github.com/conductorone/baton-zuper/pkg/client"
 	"github.com/conductorone/baton-zuper/test"
 	"github.com/stretchr/testify/assert"
@@ -79,7 +80,8 @@ func TestTeamBuilder_List(t *testing.T) {
 				client:       mockCli,
 			}
 
-			resources, nextPage, gotAnnos, err := builder.List(context.Background(), nil, &pagination.Token{Token: "", Size: 50})
+			attrs := rs.SyncOpAttrs{PageToken: pagination.Token{Token: "", Size: client.DefaultPageSize}}
+			resources, results, err := builder.List(context.Background(), nil, attrs)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -95,8 +97,8 @@ func TestTeamBuilder_List(t *testing.T) {
 			}
 
 			require.NotEmpty(t, resources)
-			assert.Equal(t, tt.nextToken, nextPage)
-			assert.Equal(t, len(annos), len(gotAnnos))
+			assert.Equal(t, tt.nextToken, results.NextPageToken)
+			assert.Equal(t, len(annos), len(results.Annotations))
 		})
 	}
 }
@@ -125,12 +127,12 @@ func TestTeamBuilder_Grants(t *testing.T) {
 		},
 		DisplayName: "Team One",
 	}
-	grants, _, annos, err := builder.Grants(context.Background(), teamRes, nil)
+	grants, results, err := builder.Grants(context.Background(), teamRes, rs.SyncOpAttrs{})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, grants)
 	assert.Equal(t, "user-1", grants[0].Principal.Id.Resource)
 	assert.Equal(t, "team-1", grants[0].Entitlement.Resource.Id.Resource)
-	assert.Equal(t, 0, len(annos))
+	assert.Equal(t, 0, len(results.Annotations))
 }
 
 // TestTeamBuilder_Grants_Error tests the Grants method of teamBuilder for error handling when fetching team users fails.
@@ -151,10 +153,9 @@ func TestTeamBuilder_Grants_Error(t *testing.T) {
 		},
 		DisplayName: "Team Error",
 	}
-	grants, _, annos, err := builder.Grants(context.Background(), teamRes, nil)
+	grants, _, err := builder.Grants(context.Background(), teamRes, rs.SyncOpAttrs{})
 	assert.Error(t, err)
 	assert.Nil(t, grants)
-	assert.Equal(t, 0, len(annos))
 }
 
 // TestTeamBuilder_Grant tests the Grant method of teamBuilder for assigning a user to a team.
