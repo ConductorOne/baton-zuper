@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"time"
 
 	v2 "github.com/conductorone/baton-sdk/pb/c1/connector/v2"
 	"github.com/conductorone/baton-sdk/pkg/annotations"
@@ -95,7 +96,7 @@ func (d *Connector) Validate(ctx context.Context) (annotations.Annotations, erro
 // New returns a new instance of the connector.
 func New(ctx context.Context, apiUrl string, token string) (*Connector, error) {
 	l := ctxzap.Extract(ctx)
-	httpClient := uhttp.NewBaseHttpClient(&http.Client{})
+	httpClient := uhttp.NewBaseHttpClient(&http.Client{Timeout: 30 * time.Second})
 	zuperClient, err := client.New(ctx, client.NewClient(ctx, apiUrl, token, httpClient))
 	if err != nil {
 		l.Error("error creating Zuper client", zap.Error(err))
