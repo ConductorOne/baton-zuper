@@ -51,9 +51,8 @@ func parseIntoTeamResource(team *client.Team) (*v2.Resource, error) {
 		team.TeamName,
 		teamResourceType,
 		team.TeamUID,
-		[]resource.GroupTraitOption{
-			resource.WithGroupProfile(profile),
-		},
+		[]resource.GroupTraitOption{},
+		resource.WithResourceProfile(profile),
 	)
 }
 

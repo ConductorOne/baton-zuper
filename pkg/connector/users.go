@@ -206,8 +206,6 @@ func parseIntoUserResource(user *client.ZuperUser) (*v2.Resource, error) {
 	}
 
 	userTraits := []resource.UserTraitOption{
-		resource.WithUserProfile(profile),
-		resource.WithStatus(userStatus),
 		resource.WithUserLogin(user.Email),
 		resource.WithEmail(user.Email, true),
 	}
@@ -218,6 +216,8 @@ func parseIntoUserResource(user *client.ZuperUser) (*v2.Resource, error) {
 		userResourceType,
 		user.UserUID,
 		userTraits,
+		resource.WithResourceProfile(profile),
+		resource.WithResourceStatus(v2.Status_ResourceStatus(userStatus), ""),
 	)
 	if err != nil {
 		return nil, err
