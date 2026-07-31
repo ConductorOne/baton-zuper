@@ -105,7 +105,8 @@ func (b *accessRoleBuilder) List(ctx context.Context, parentResourceID *v2.Resou
 			role.AccessRoleName,
 			b.resourceType,
 			uid,
-			[]resource.RoleTraitOption{resource.WithRoleProfile(profile)},
+			[]resource.RoleTraitOption{},
+			resource.WithResourceProfile(profile),
 		)
 		if err != nil {
 			return nil, "", annos, fmt.Errorf("failed to create access role resource: %w", err)
